@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { SignupScreen } from '../screens/SignupScreen';
@@ -17,9 +17,20 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const CourtTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: '#0a3d62',
+    text: '#f3ead7',
+    primary: '#b7ff00',
+    card: '#0a3d62',
+  },
+};
+
 export const RootNavigator = () => {
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={CourtTheme}>
       <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Onboarding">
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />

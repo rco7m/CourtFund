@@ -39,12 +39,12 @@ const ShuttlecockLogo = () => (
   <Svg width={36} height={48} viewBox="0 0 60 80">
     <Path
       d="M15 10 C 25 35 30 50 30 50 M45 10 C 35 35 30 50 30 50 M30 5 C 30 25 30 50 30 50 M5 20 C 20 40 30 50 30 50 M55 20 C 40 40 30 50 30 50"
-      stroke="#D4AF37"
+      stroke="#b7ff00"
       strokeWidth="2"
       fill="none"
       strokeLinecap="round"
     />
-    <Circle cx="30" cy="55" r="5" stroke="#D4AF37" strokeWidth="2" fill="none" />
+    <Circle cx="30" cy="55" r="5" stroke="#b7ff00" strokeWidth="2" fill="none" />
   </Svg>
 );
 
@@ -65,8 +65,8 @@ export const LoginScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+  <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0a3d62" />
       <GridBackground />
 
       <KeyboardAvoidingView
@@ -94,11 +94,11 @@ export const LoginScreen = () => {
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>Email address</Text>
               <View style={[styles.inputRow, emailFocused && styles.inputRowFocused]}>
-                <Mail color={emailFocused ? '#208B59' : '#5B738B'} size={18} />
+                <Mail color={emailFocused ? '#b7ff00' : 'rgba(243,234,215,0.7)'} size={18} />
                 <TextInput
                   style={styles.input}
                   placeholder="you@example.com"
-                  placeholderTextColor="#A0B3C4"
+                  placeholderTextColor="rgba(243,234,215,0.5)"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   value={email}
@@ -118,11 +118,11 @@ export const LoginScreen = () => {
                 </TouchableOpacity>
               </View>
               <View style={[styles.inputRow, passwordFocused && styles.inputRowFocused]}>
-                <Lock color={passwordFocused ? '#208B59' : '#5B738B'} size={18} />
+                <Lock color={passwordFocused ? '#b7ff00' : 'rgba(243,234,215,0.7)'} size={18} />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your password"
-                  placeholderTextColor="#A0B3C4"
+                  placeholderTextColor="rgba(243,234,215,0.5)"
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={setPassword}
@@ -131,8 +131,8 @@ export const LoginScreen = () => {
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   {showPassword
-                    ? <EyeOff color="#5B738B" size={18} />
-                    : <Eye color="#5B738B" size={18} />
+                    ? <EyeOff color="rgba(243,234,215,0.7)" size={18} />
+                    : <Eye color="rgba(243,234,215,0.7)" size={18} />
                   }
                 </TouchableOpacity>
               </View>
@@ -186,7 +186,7 @@ export const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#0a3d62',
   },
   scroll: {
     flexGrow: 1,
@@ -207,32 +207,34 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#0D2B4A',
+    color: '#f3ead7',
     letterSpacing: 1,
     marginLeft: 10,
   },
   heading: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#0D2B4A',
+    color: '#f3ead7',
     letterSpacing: 0.5,
   },
   subheading: {
     fontSize: 15,
-    color: '#5B738B',
+    color: 'rgba(243,234,215,0.7)',
     marginTop: 6,
     fontWeight: '400',
   },
   card: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 24,
     padding: 24,
-    shadowColor: '#0D2B4A',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.2,
     shadowRadius: 24,
     elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   fieldGroup: {
     marginBottom: 18,
@@ -240,7 +242,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#0D2B4A',
+    color: '#f3ead7',
     marginBottom: 8,
     letterSpacing: 0.3,
   },
@@ -252,43 +254,43 @@ const styles = StyleSheet.create({
   },
   forgotLink: {
     fontSize: 13,
-    color: '#208B59',
+    color: '#b7ff00',
     fontWeight: '600',
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F4F7FA',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 14,
     borderWidth: 1.5,
-    borderColor: '#E8EDF2',
+    borderColor: 'rgba(255,255,255,0.2)',
     gap: 10,
   },
   inputRowFocused: {
-    borderColor: '#208B59',
-    backgroundColor: '#F0FAF5',
+    borderColor: '#b7ff00',
+    backgroundColor: 'rgba(183,255,0,0.05)',
   },
   input: {
     flex: 1,
     fontSize: 15,
-    color: '#0D2B4A',
+    color: '#f3ead7',
     fontWeight: '400',
   },
   primaryButton: {
-    backgroundColor: '#208B59',
+    backgroundColor: '#b7ff00',
     borderRadius: 14,
     paddingVertical: 17,
     alignItems: 'center',
-    shadowColor: '#208B59',
+    shadowColor: '#b7ff00',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 5,
   },
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: '#0a3d62',
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -302,11 +304,11 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E8EDF2',
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   dividerText: {
     fontSize: 13,
-    color: '#A0B3C4',
+    color: 'rgba(243,234,215,0.5)',
     fontWeight: '500',
   },
   secondaryButton: {
@@ -314,11 +316,11 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#E8EDF2',
-    backgroundColor: '#F4F7FA',
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
   secondaryButtonText: {
-    color: '#0D2B4A',
+    color: '#f3ead7',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -329,13 +331,13 @@ const styles = StyleSheet.create({
   },
   privacyText: {
     fontSize: 12,
-    color: '#A0B3C4',
+    color: 'rgba(243,234,215,0.5)',
     textAlign: 'center',
     lineHeight: 18,
     fontWeight: '400',
   },
   privacyLink: {
-    color: '#208B59',
+    color: '#b7ff00',
     fontWeight: '600',
     textDecorationLine: 'underline',
   },

@@ -27,8 +27,8 @@ const GridBackground = () => (
 
 const ShuttlecockLogo = () => (
   <Svg width={60} height={80} viewBox="0 0 60 80">
-    <Path d="M15 10 C 25 35 30 50 30 50 M45 10 C 35 35 30 50 30 50 M30 5 C 30 25 30 50 30 50 M5 20 C 20 40 30 50 30 50 M55 20 C 40 40 30 50 30 50" stroke="#D4AF37" strokeWidth="2" fill="none" strokeLinecap="round" />
-    <Circle cx="30" cy="55" r="5" stroke="#D4AF37" strokeWidth="2" fill="none" />
+    <Path d="M15 10 C 25 35 30 50 30 50 M45 10 C 35 35 30 50 30 50 M30 5 C 30 25 30 50 30 50 M5 20 C 20 40 30 50 30 50 M55 20 C 40 40 30 50 30 50" stroke="#b7ff00" strokeWidth="2" fill="none" strokeLinecap="round" />
+    <Circle cx="30" cy="55" r="5" stroke="#b7ff00" strokeWidth="2" fill="none" />
   </Svg>
 );
 
@@ -54,7 +54,7 @@ export const OnboardingScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.footerText}>MADE FOR BADMINTON CLUBS</Text>
+      <Text style={styles.footerText}>MADE FOR BADMINTON</Text>
     </View>
   );
 };
@@ -62,45 +62,45 @@ export const OnboardingScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#0a3d62',
     alignItems: 'center',
     justifyContent: 'center',
   },
   content: {
     alignItems: 'center',
     paddingHorizontal: 32,
-    zIndex: 1, // To be above the grid
+    zIndex: 1, 
     width: '100%',
   },
   title: {
     fontSize: 40,
     fontWeight: '800',
-    color: '#0D2B4A', // Dark Navy
+    color: '#f3ead7', 
     marginTop: 24,
     letterSpacing: 2,
   },
   subtitle: {
     fontSize: 16,
-    color: '#5B738B',
+    color: 'rgba(243,234,215,0.8)',
     marginTop: 12,
     marginBottom: 48,
     fontWeight: '400',
   },
   button: {
-    backgroundColor: '#208B59', // Green from the image
+    backgroundColor: '#b7ff00', 
     paddingVertical: 18,
     paddingHorizontal: 40,
-    borderRadius: 20, // Rounded, but seemingly slightly rectangular in image? Let's use 16
+    borderRadius: 16, 
     width: '100%',
     alignItems: 'center',
-    shadowColor: '#208B59',
+    shadowColor: '#b7ff00',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 5,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: '#0a3d62',
     fontSize: 18,
     fontWeight: '700',
   },
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     bottom: 50,
     fontSize: 12,
     letterSpacing: 1.5,
-    color: '#5B738B',
+    color: 'rgba(243,234,215,0.6)',
     fontWeight: '500',
     textTransform: 'uppercase',
   },

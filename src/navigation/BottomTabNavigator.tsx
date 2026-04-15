@@ -1,4 +1,5 @@
 import React from 'react';
+import { BlurView } from '@react-native-community/blur';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -62,15 +63,24 @@ export const BottomTabNavigator = () => {
         screenOptions={{
           headerShown: false,
           tabBarStyle: {
-            backgroundColor: '#0A1A2F',
-            borderTopWidth: 0,
+            position: 'absolute',
+            backgroundColor: 'transparent',
+            borderTopWidth: 1,
+            borderTopColor: 'rgba(255,255,255,0.1)',
             elevation: 0,
             height: 90,
             paddingTop: 10,
             paddingBottom: 30,
           },
-          tabBarActiveTintColor: '#DEA54B',
-          tabBarInactiveTintColor: '#5B738B',
+          tabBarBackground: () => (
+            <BlurView
+              blurType="dark"
+              blurAmount={20}
+              style={StyleSheet.absoluteFill}
+            />
+          ),
+          tabBarActiveTintColor: '#b7ff00',
+          tabBarInactiveTintColor: '#f3ead7',
           tabBarLabelStyle: {
             fontSize: 12,
             fontWeight: '500',
