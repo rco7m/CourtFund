@@ -68,7 +68,7 @@ export const AIAssistant = () => {
       {/* FAB */}
       {!open && (
         <TouchableOpacity style={styles.fab} activeOpacity={0.85} onPress={() => setOpen(true)}>
-          <MessageCircle color="#0D2B4A" size={26} />
+          <MessageCircle color="#165281" size={26} />
         </TouchableOpacity>
       )}
 
@@ -85,11 +85,11 @@ export const AIAssistant = () => {
               {/* Header */}
               <View style={styles.header}>
                 <View style={styles.headerLeft}>
-                  <Sparkles color="#DEA54B" size={16} />
+                  <Sparkles color="#b7ff00" size={16} />
                   <Text style={styles.headerTitle}>AI Assistant</Text>
                 </View>
                 <TouchableOpacity onPress={() => setOpen(false)} style={styles.closeBtn}>
-                  <X color="#8A9BB3" size={18} />
+                  <X color="#f3ead7" size={18} />
                 </TouchableOpacity>
               </View>
 
@@ -107,8 +107,8 @@ export const AIAssistant = () => {
                 ))}
                 {thinking && (
                   <View style={[styles.bubble, styles.aiBubble, { flexDirection: 'row', alignItems: 'center' }]}>
-                    <ActivityIndicator size="small" color="#5B738B" />
-                    <Text style={{ color: '#5B738B', fontSize: 12, marginLeft: 8 }}>Thinking...</Text>
+                    <ActivityIndicator size="small" color="#f3ead7" />
+                    <Text style={{ color: '#f3ead7', fontSize: 12, marginLeft: 8 }}>Thinking...</Text>
                   </View>
                 )}
               </ScrollView>
@@ -132,7 +132,7 @@ export const AIAssistant = () => {
                 <TextInput
                   style={styles.input}
                   placeholder="Ask anything..."
-                  placeholderTextColor="#8A9BB3"
+                  placeholderTextColor="rgba(243,234,215,0.5)"
                   value={inputText}
                   onChangeText={setInputText}
                   onSubmitEditing={() => send()}
@@ -144,7 +144,7 @@ export const AIAssistant = () => {
                   onPress={() => send()}
                   disabled={!inputText.trim()}
                 >
-                  <Send color="#FFF" size={14} />
+                  <Send color="#165281" size={14} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: TAB_BAR_HEIGHT + 16, right: 20,
     width: 52, height: 52, borderRadius: 26,
-    backgroundColor: '#D4AF37',
+    backgroundColor: '#b7ff00',
     justifyContent: 'center', alignItems: 'center',
     elevation: 8,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8,
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     zIndex: 200,
   },
   kavWrapper: {
@@ -179,46 +179,48 @@ const styles = StyleSheet.create({
   },
   panel: {
     height: PANEL_HEIGHT,
-    backgroundColor: '#FFF',
+    backgroundColor: 'rgba(10,61,98,0.95)',
     borderRadius: 20,
     overflow: 'hidden',
     elevation: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.12, shadowRadius: 12,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#13284B',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     paddingHorizontal: 18, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)',
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
-  headerTitle: { color: '#FFF', fontSize: 15, fontWeight: '700', marginLeft: 8 },
+  headerTitle: { color: '#f3ead7', fontSize: 15, fontWeight: '700', marginLeft: 8 },
   closeBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
   chatArea: { flex: 1 },
   chatContent: { padding: 12, paddingBottom: 4 },
   bubble: { maxWidth: '88%', padding: 11, borderRadius: 16, marginBottom: 6 },
-  aiBubble: { backgroundColor: '#E8EBEF', alignSelf: 'flex-start', borderTopLeftRadius: 4 },
-  userBubble: { backgroundColor: '#208B59', alignSelf: 'flex-end', borderTopRightRadius: 4 },
-  bubbleText: { fontSize: 13, color: '#13284B', lineHeight: 19 },
-  userText: { color: '#FFF' },
+  aiBubble: { backgroundColor: 'rgba(255,255,255,0.1)', alignSelf: 'flex-start', borderTopLeftRadius: 4 },
+  userBubble: { backgroundColor: '#b7ff00', alignSelf: 'flex-end', borderTopRightRadius: 4 },
+  bubbleText: { fontSize: 13, color: '#f3ead7', lineHeight: 19 },
+  userText: { color: '#165281' },
   chipsScroll: { maxHeight: 46, flexShrink: 0 },
   chipsRow: { paddingHorizontal: 12, alignItems: 'center', paddingVertical: 6 },
   chip: {
-    backgroundColor: '#F0F2F5', paddingHorizontal: 12, height: 30,
+    backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, height: 30,
     borderRadius: 15, justifyContent: 'center', alignItems: 'center',
-    marginRight: 8, borderWidth: 1, borderColor: '#E2E8F0',
+    marginRight: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
-  chipText: { color: '#13284B', fontSize: 11, fontWeight: '500' },
+  chipText: { color: '#f3ead7', fontSize: 11, fontWeight: '500' },
   inputRow: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 12, paddingVertical: 10,
-    borderTopWidth: 1, borderTopColor: '#F0F2F5',
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)',
   },
   input: {
     flex: 1, height: 40,
-    backgroundColor: '#F0F2F5', borderRadius: 20,
-    paddingHorizontal: 16, fontSize: 13, color: '#13284B',
+    backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 20,
+    paddingHorizontal: 16, fontSize: 13, color: '#f3ead7',
     marginRight: 10,
   },
-  sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#208B59', justifyContent: 'center', alignItems: 'center' },
-  sendBtnOff: { backgroundColor: '#A2CBB6' },
+  sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#b7ff00', justifyContent: 'center', alignItems: 'center' },
+  sendBtnOff: { backgroundColor: 'rgba(183,255,0,0.3)' },
 });

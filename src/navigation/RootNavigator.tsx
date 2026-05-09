@@ -21,10 +21,10 @@ const CourtTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: '#0a3d62',
+    background: '#165281',
     text: '#f3ead7',
     primary: '#b7ff00',
-    card: '#0a3d62',
+    card: '#165281',
   },
 };
 

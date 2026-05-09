@@ -66,7 +66,7 @@ export const BottomTabNavigator = () => {
             position: 'absolute',
             backgroundColor: 'transparent',
             borderTopWidth: 1,
-            borderTopColor: 'rgba(255,255,255,0.1)',
+            borderTopColor: 'rgba(148,163,184,0.12)',
             elevation: 0,
             height: 90,
             paddingTop: 10,
@@ -75,16 +75,17 @@ export const BottomTabNavigator = () => {
           tabBarBackground: () => (
             <BlurView
               blurType="dark"
-              blurAmount={20}
+              blurAmount={25}
               style={StyleSheet.absoluteFill}
             />
           ),
-          tabBarActiveTintColor: '#b7ff00',
-          tabBarInactiveTintColor: '#f3ead7',
+          tabBarActiveTintColor: '#CCFF00',
+          tabBarInactiveTintColor: '#94A3B8',
           tabBarLabelStyle: {
-            fontSize: 12,
-            fontWeight: '500',
+            fontSize: 11,
+            fontWeight: '600',
             marginTop: 4,
+            letterSpacing: 0.3,
           },
         }}
       >

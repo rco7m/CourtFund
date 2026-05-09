@@ -1,18 +1,10 @@
 import React, { useState, useRef } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Animated,
-  StatusBar,
+  View, Text, StyleSheet, TouchableOpacity, TextInput,
+  Dimensions, KeyboardAvoidingView, Platform, ScrollView,
+  Animated, StatusBar, Image,
 } from 'react-native';
-import Svg, { Line, Path, Circle } from 'react-native-svg';
+import Svg, { Line } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
@@ -35,18 +27,6 @@ const GridBackground = () => (
   </View>
 );
 
-const ShuttlecockLogo = () => (
-  <Svg width={36} height={48} viewBox="0 0 60 80">
-    <Path
-      d="M15 10 C 25 35 30 50 30 50 M45 10 C 35 35 30 50 30 50 M30 5 C 30 25 30 50 30 50 M5 20 C 20 40 30 50 30 50 M55 20 C 40 40 30 50 30 50"
-      stroke="#b7ff00"
-      strokeWidth="2"
-      fill="none"
-      strokeLinecap="round"
-    />
-    <Circle cx="30" cy="55" r="5" stroke="#b7ff00" strokeWidth="2" fill="none" />
-  </Svg>
-);
 
 export const LoginScreen = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -66,7 +46,7 @@ export const LoginScreen = () => {
 
   return (
   <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a3d62" />
+      <StatusBar barStyle="light-content" backgroundColor="#165281" />
       <GridBackground />
 
       <KeyboardAvoidingView
@@ -81,7 +61,7 @@ export const LoginScreen = () => {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.logoRow}>
-              <ShuttlecockLogo />
+              <Image source={require('../assets/logo.png')} style={{width:36,height:36,borderRadius:8}} resizeMode="contain"/>
               <Text style={styles.logoText}>CourtFund</Text>
             </View>
             <Text style={styles.heading}>Welcome back</Text>
@@ -186,7 +166,7 @@ export const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a3d62',
+    backgroundColor: '#165281',
   },
   scroll: {
     flexGrow: 1,
@@ -290,7 +270,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   primaryButtonText: {
-    color: '#0a3d62',
+    color: '#165281',
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: 0.5,

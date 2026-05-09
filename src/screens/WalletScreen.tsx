@@ -1,189 +1,221 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Dimensions } from 'react-native';
-import { Bell, User, ArrowDownRight, ClipboardList } from 'lucide-react-native';
+import React, { useState, useRef } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  Modal, TextInput, Dimensions, KeyboardAvoidingView, Platform, Animated,
+} from 'react-native';
+import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import Svg, { Path } from 'react-native-svg';
+import {
+  Plus, ArrowRight, Layers, ShoppingBag, Target, CreditCard, ArrowLeft,
+} from 'lucide-react-native';
+import { AppHeader } from '../components/AppHeader';
 
-const { width } = Dimensions.get('window');
+const C = {
+  bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
+  neutral: '#94A3B8', text: '#E2E8F0', border: 'rgba(148,163,184,0.12)',
+  accentMuted: 'rgba(204,255,0,0.08)', accentBorder: 'rgba(204,255,0,0.25)',
+};
 
-const CustomLineChart = () => (
-  <View style={styles.chartWrapper}>
-    {/* Grid lines */}
-    <View style={styles.chartGridLine} />
-    <View style={styles.chartGridLine} />
-    <View style={styles.chartGridLineLast} />
-    <Svg width="100%" height={90} style={{ position: 'absolute', bottom: 0 }}>
-      {/* Path approximation for the trend */}
-      <Path
-        d="M 10 70 L 60 75 L 120 55 L 180 60 L 240 25 L 300 35 L 360 15"
-        fill="none"
-        stroke="#13284B"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M 10 70 L 60 75 L 120 55 L 180 60 L 240 25 L 300 35 L 360 15 L 360 90 L 10 90 Z"
-        fill="rgba(19, 40, 75, 0.05)"
-      />
-    </Svg>
+const CATEGORIES = [
+  { id: 'court', label: 'Court Fees', icon: Layers },
+  { id: 'gear', label: 'Gear & Equip', icon: ShoppingBag },
+  { id: 'training', label: 'Coaching', icon: Target },
+  { id: 'other', label: 'Other', icon: CreditCard },
+];
+
+const TxItem = ({ icon: Icon, title, sub, amount, isLast }: any) => (
+  <View style={[s.txItem, isLast && { borderBottomWidth: 0 }]}>
+    <View style={s.txIconBox}><Icon size={18} color={C.accent} /></View>
+    <View style={{ flex: 1 }}>
+      <Text style={s.txTitle}>{title}</Text>
+      <Text style={s.txSub}>{sub}</Text>
+    </View>
+    <Text style={s.txAmount}>{amount}</Text>
   </View>
 );
 
-const ProgressBarItem = ({ label, amount, percentage }: any) => (
-  <View style={styles.progressItem}>
-    <View style={styles.progressItemRow}>
-      <Text style={styles.progressItemLabel}>{label}</Text>
-      <Text style={styles.progressItemAmount}>{amount}</Text>
-    </View>
-    <View style={styles.progressBarTrack}>
-      <View style={[styles.progressBarFill, { width: percentage }]} />
-    </View>
-  </View>
-);
+const AddTransactionModal = ({ visible, onClose }: any) => {
+  const insets = useSafeAreaInsets();
+  const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('court');
 
-const TransactionItem = ({ title, date, amount }: any) => (
-  <View style={styles.transactionItem}>
-    <View style={styles.transactionLeft}>
-      <View style={styles.transactionIconBox}>
-        <ClipboardList size={18} color="#5B738B" />
-      </View>
-      <View>
-        <Text style={styles.transactionTitle}>{title}</Text>
-        <Text style={styles.transactionDate}>{date}</Text>
-      </View>
-    </View>
-    <Text style={styles.transactionAmount}>{amount}</Text>
-  </View>
-);
+  return (
+    <Modal visible={visible} animationType="slide" statusBarTranslucent>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={[s.modalHeader, { paddingTop: insets.top + 12 }]}>
+          <TouchableOpacity onPress={onClose} style={s.modalBackBtn}>
+            <ArrowLeft size={20} color={C.text} />
+          </TouchableOpacity>
+          <Text style={s.modalTitle}>Add Transaction</Text>
+          <View style={{ width: 36 }} />
+        </View>
+
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+          <View style={s.amountSection}>
+            <Text style={s.amountLabel}>ENTER AMOUNT</Text>
+            <View style={s.amountRow}>
+              <Text style={s.dollarSign}>$</Text>
+              <TextInput
+                style={s.amountInput}
+                value={amount}
+                onChangeText={setAmount}
+                placeholder="0.00"
+                placeholderTextColor={C.neutral}
+                keyboardType="decimal-pad"
+              />
+            </View>
+          </View>
+
+          <View style={s.section}>
+            <Text style={s.sectionLabel}>CATEGORY</Text>
+            <View style={s.categoryGrid}>
+              {CATEGORIES.map(cat => {
+                const active = category === cat.id;
+                return (
+                  <TouchableOpacity key={cat.id} style={[s.catItem, active && s.catItemActive]}
+                    onPress={() => setCategory(cat.id)}>
+                    <cat.icon size={22} color={active ? C.accent : C.neutral} />
+                    <Text style={[s.catLabel, active && { color: C.accent }]}>{cat.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <TouchableOpacity style={s.submitBtn} onPress={onClose}>
+            <Text style={s.submitBtnText}>LOG TRANSACTION</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+};
+
+const AddFundsModal = ({ visible, onClose }: any) => {
+  const [amount, setAmount] = useState('');
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible={visible} transparent animationType="slide">
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: insets.bottom + 24, borderTopWidth: 1, borderColor: C.border }}>
+          <Text style={{ color: C.text, fontSize: 18, fontWeight: '700', marginBottom: 20 }}>Add Funds</Text>
+          <Text style={{ color: C.neutral, fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 }}>AMOUNT ($)</Text>
+          <TextInput
+            style={{ backgroundColor: C.bg, borderRadius: 14, paddingHorizontal: 16, height: 54, fontSize: 24, color: C.accent, fontWeight: '700', borderWidth: 1, borderColor: C.border, marginBottom: 20 }}
+            placeholder="0.00" placeholderTextColor={C.neutral}
+            keyboardType="decimal-pad" value={amount} onChangeText={setAmount}
+          />
+          <TouchableOpacity style={{ backgroundColor: C.accent, borderRadius: 30, paddingVertical: 15, alignItems: 'center' }} onPress={onClose}>
+            <Text style={{ color: C.bg, fontWeight: '800', fontSize: 15 }}>CONFIRM TOP-UP</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{ marginTop: 12, alignItems: 'center' }} onPress={onClose}>
+            <Text style={{ color: C.neutral, fontSize: 14 }}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+};
 
 export const WalletScreen = () => {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<any>();
+  const [showAdd, setShowAdd] = useState(false);
+  const [showFunds, setShowFunds] = useState(false);
 
   return (
-    <View style={styles.container}>
-       <View style={[styles.topSection, { paddingTop: insets.top + 16 }]}>
-          <View style={styles.header}>
-            <View style={styles.headerLogoCircle}>
-              <Text style={styles.headerLogoText}>CF</Text>
-            </View>
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>CourtFund</Text>
-              <Text style={styles.headerSubtitle}>Personal Tracker</Text>
-            </View>
-            <TouchableOpacity style={styles.headerIconWrapper}><Bell color="#8A9BB3" size={20} /></TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.headerIconWrapper, { backgroundColor: '#208B59', marginLeft: 12 }]}
-              onPress={() => navigation.navigate('Profile')}
-            >
-              <User color="#FFF" size={20} />
-            </TouchableOpacity>
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <View style={{ paddingTop: insets.top + 10 }}>
+        <AppHeader />
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        <View style={s.liquidityCard}>
+          <View>
+            <Text style={s.liquidityLabel}>TOTAL LIQUIDITY</Text>
+            <Text style={s.liquidityAmount}>$ 4,825.00</Text>
           </View>
-       </View>
+          <TouchableOpacity style={s.addFundsBtn} onPress={() => setShowFunds(true)}>
+            <Plus size={14} color={C.bg} style={{ marginRight: 6 }} />
+            <Text style={s.addFundsText}>Add Funds</Text>
+          </TouchableOpacity>
+        </View>
 
-       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-         
-         {/* Total Spent Card */}
-         <View style={styles.totalSpentCard}>
-           {/* Fake subtle grid inside card */}
-           <View style={styles.totalGridCols}>
-             <View style={styles.gridLineV} /><View style={styles.gridLineV} /><View style={styles.gridLineV} />
-           </View>
-           <View style={styles.totalGridRows}>
-             <View style={styles.gridLineH} />
-           </View>
+        <View style={s.card}>
+          <Text style={s.cardTitle}>MONTHLY SPENDING</Text>
+          <View style={s.chartBox}>
+            <Svg width="200" height="120" viewBox="0 0 200 120">
+              <Path d="M 20 100 Q 60 40 100 80 T 180 20" fill="none" stroke={C.accent} strokeWidth="3" />
+            </Svg>
+          </View>
+          <View style={s.spendingStats}>
+            <View>
+              <Text style={s.statLabel}>OUTFLOW</Text>
+              <Text style={s.statValue}>-$420.50</Text>
+            </View>
+            <View>
+              <Text style={s.statLabel}>SAVED</Text>
+              <Text style={s.statValue}>+$12.00</Text>
+            </View>
+          </View>
+        </View>
 
-           <View style={{ zIndex: 2 }}>
-             <Text style={styles.totalSpentLabel}>TOTAL SPENT</Text>
-             <Text style={styles.totalSpentAmount}>$283<Text style={styles.amountDecimal}>.50</Text></Text>
-             <Text style={styles.totalSpentSub}>This month • Updated today</Text>
-           </View>
-         </View>
+        <View style={s.activityHeader}>
+          <Text style={s.activityTitle}>Activity History</Text>
+          <TouchableOpacity onPress={() => {}}><Text style={s.viewAll}>View All</Text></TouchableOpacity>
+        </View>
+        <View style={s.card}>
+          <TxItem icon={Layers} title="Downtown Arena Rental" sub="Yesterday • 14:30" amount="-$120.00" />
+          <TxItem icon={ShoppingBag} title="Shuttlecocks Order" sub="Mar 12 • 10:15" amount="-$85.00" />
+          <TxItem icon={Target} title="Coaching Session" sub="Mar 10 • 18:00" amount="-$60.00" isLast />
+        </View>
+      </ScrollView>
 
-         {/* Spending Trend */}
-         <View style={styles.card}>
-           <Text style={styles.cardTitle}>SPENDING TREND</Text>
-           <CustomLineChart />
-           <View style={styles.legendRow}>
-             <View style={styles.legendDash} />
-             <Text style={styles.legendText}>Your spending</Text>
-           </View>
-         </View>
+      <TouchableOpacity style={s.fab} onPress={() => setShowAdd(true)}>
+        <Plus size={24} color={C.bg} />
+      </TouchableOpacity>
 
-         {/* Expense Breakdown */}
-         <View style={styles.card}>
-           <View style={styles.cardTitleRow}>
-             <ArrowDownRight size={18} color="#13284B" style={{ marginRight: 6 }} />
-             <Text style={styles.cardTitleLine}>Expense Breakdown</Text>
-           </View>
-           
-           <ProgressBarItem label="Court Rentals" amount="$90.00" percentage="35%" />
-           <ProgressBarItem label="Shuttlecocks" amount="$168.00" percentage="65%" />
-           <ProgressBarItem label="Equipment & Gear" amount="$25.50" percentage="10%" />
-         </View>
-
-         {/* Transaction History */}
-         <Text style={styles.sectionTitle}>TRANSACTION HISTORY</Text>
-         <View style={styles.transactionsContainer}>
-           <TransactionItem title="Court 2 Booking" date="Today • Court" amount="-$40.00" />
-           <TransactionItem title="Shuttle Tube (AS-30)" date="Yesterday • Gear" amount="-$35.00" />
-           <TransactionItem title="Court 1 Booking" date="Mar 11 • Court" amount="-$10.00" />
-           <TransactionItem title="Grip Tape" date="Mar 10 • Gear" amount="-$8.50" />
-         </View>
-
-       </ScrollView>
+      <AddTransactionModal visible={showAdd} onClose={() => setShowAdd(false)} />
+      <AddFundsModal visible={showFunds} onClose={() => setShowFunds(false)} />
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F0F2F5' },
-  topSection: { backgroundColor: '#13284B', paddingHorizontal: 20, paddingBottom: 20 },
-  header: { flexDirection: 'row', alignItems: 'center' },
-  headerLogoCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#3A2E22', justifyContent: 'center', alignItems: 'center', opacity: 0.8 },
-  headerLogoText: { color: '#DEA54B', fontWeight: 'bold', fontSize: 18 },
-  headerTextContainer: { flex: 1, marginLeft: 12 },
-  headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '700' },
-  headerSubtitle: { color: '#8A9BB3', fontSize: 13, marginTop: 2 },
-  headerIconWrapper: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
-  
-  totalSpentCard: { backgroundColor: '#0D1E3A', marginHorizontal: 20, marginTop: 16, borderRadius: 20, padding: 24, overflow: 'hidden', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10 },
-  totalGridCols: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', justifyContent: 'space-evenly', opacity: 0.05 },
-  gridLineV: { width: 1, backgroundColor: '#FFF', height: '100%' },
-  totalGridRows: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', opacity: 0.05 },
-  gridLineH: { height: 1, backgroundColor: '#FFF', width: '100%' },
-  totalSpentLabel: { color: '#DEA54B', fontSize: 12, fontWeight: '600', letterSpacing: 1 },
-  totalSpentAmount: { color: '#208B59', fontSize: 48, fontWeight: '800', marginTop: 8 },
-  amountDecimal: { fontSize: 36 },
-  totalSpentSub: { color: '#8A9BB3', fontSize: 12, marginTop: 8 },
-
-  card: { backgroundColor: '#FFF', marginHorizontal: 20, marginTop: 20, borderRadius: 20, padding: 24, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8 },
-  cardTitle: { fontSize: 13, color: '#5B738B', fontWeight: '600', letterSpacing: 1, marginBottom: 16 },
-  cardTitleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  cardTitleLine: { fontSize: 15, fontWeight: '700', color: '#13284B' },
-  
-  chartWrapper: { height: 100, justifyContent: 'flex-end', marginBottom: 16 },
-  chartGridLine: { height: 1, backgroundColor: '#F0F2F5', width: '100%', marginBottom: 30 },
-  chartGridLineLast: { height: 1, backgroundColor: '#F0F2F5', width: '100%' },
-  legendRow: { flexDirection: 'row', alignItems: 'center' },
-  legendDash: { width: 12, height: 2, backgroundColor: '#13284B', marginRight: 8 },
-  legendText: { fontSize: 12, color: '#5B738B' },
-
-  progressItem: { marginBottom: 20 },
-  progressItemRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  progressItemLabel: { fontSize: 13, color: '#5B738B' },
-  progressItemAmount: { fontSize: 14, fontWeight: '700', color: '#13284B' },
-  progressBarTrack: { height: 6, backgroundColor: '#F0F2F5', borderRadius: 3 },
-  progressBarFill: { height: '100%', backgroundColor: '#5B738B', borderRadius: 3 },
-
-  sectionTitle: { fontSize: 13, color: '#5B738B', fontWeight: '600', letterSpacing: 1, marginHorizontal: 24, marginTop: 32, marginBottom: 16 },
-  transactionsContainer: { backgroundColor: '#FFF', marginHorizontal: 20, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8 },
-  transactionItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F0F2F5' },
-  transactionLeft: { flexDirection: 'row', alignItems: 'center' },
-  transactionIconBox: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#F0F2F5', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  transactionTitle: { fontSize: 15, fontWeight: '600', color: '#13284B', marginBottom: 4 },
-  transactionDate: { fontSize: 12, color: '#8A9BB3' },
-  transactionAmount: { fontSize: 16, fontWeight: '700', color: '#13284B' },
+const s = StyleSheet.create({
+  liquidityCard:{backgroundColor:C.card,marginHorizontal:20,borderRadius:20,padding:20,flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:16,borderWidth:1,borderColor:C.border},
+  liquidityLabel:{color:C.neutral,fontSize:10,fontWeight:'700',letterSpacing:1,marginBottom:4},
+  liquidityAmount:{color:C.accent,fontSize:28,fontWeight:'800'},
+  addFundsBtn:{flexDirection:'row',alignItems:'center',backgroundColor:C.accent,paddingHorizontal:14,paddingVertical:8,borderRadius:20},
+  addFundsText:{color:C.bg,fontWeight:'700',fontSize:12},
+  card:{backgroundColor:C.card,marginHorizontal:20,borderRadius:20,padding:20,marginBottom:16,borderWidth:1,borderColor:C.border},
+  cardTitle:{color:C.neutral,fontSize:10,fontWeight:'700',letterSpacing:1,marginBottom:20},
+  chartBox:{alignItems:'center',marginBottom:20},
+  spendingStats:{flexDirection:'row',justifyContent:'space-between'},
+  statLabel:{color:C.neutral,fontSize:10,fontWeight:'700',marginBottom:4},
+  statValue:{color:C.text,fontSize:18,fontWeight:'700'},
+  activityHeader:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginHorizontal:20,marginBottom:12},
+  activityTitle:{color:C.text,fontSize:16,fontWeight:'700'},
+  viewAll:{color:C.accent,fontSize:12,fontWeight:'600'},
+  txItem:{flexDirection:'row',alignItems:'center',paddingVertical:12,borderBottomWidth:1,borderBottomColor:C.border},
+  txIconBox:{width:36,height:36,borderRadius:10,backgroundColor:C.accentMuted,justifyContent:'center',alignItems:'center',marginRight:12,borderWidth:1,borderColor:C.accentBorder},
+  txTitle:{color:C.text,fontSize:14,fontWeight:'600',marginBottom:2},
+  txSub:{color:C.neutral,fontSize:11},
+  txAmount:{color:C.text,fontSize:14,fontWeight:'700'},
+  fab:{position:'absolute',bottom:110,left:24,width:56,height:56,borderRadius:28,backgroundColor:C.accent,justifyContent:'center',alignItems:'center',elevation:5,shadowColor:C.accent,shadowOpacity:0.3,shadowRadius:10,shadowOffset:{width:0,height:5}},
+  modalHeader:{flexDirection:'row',alignItems:'center',paddingHorizontal:20,paddingBottom:16},
+  modalBackBtn:{width:36,height:36,borderRadius:10,backgroundColor:C.card,justifyContent:'center',alignItems:'center',borderWidth:1,borderColor:C.border},
+  modalTitle:{color:C.text,fontSize:16,fontWeight:'700',flex:1,textAlign:'center'},
+  amountSection:{alignItems:'center',paddingVertical:40},
+  amountLabel:{color:C.neutral,fontSize:10,fontWeight:'700',letterSpacing:1,marginBottom:10},
+  amountRow:{flexDirection:'row',alignItems:'center'},
+  dollarSign:{color:C.accent,fontSize:32,fontWeight:'700',marginRight:4},
+  amountInput:{color:C.text,fontSize:48,fontWeight:'800',minWidth:100,textAlign:'center'},
+  section:{paddingHorizontal:20,marginBottom:30},
+  sectionLabel:{color:C.neutral,fontSize:10,fontWeight:'700',letterSpacing:1,marginBottom:16},
+  categoryGrid:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between'},
+  catItem:{width:'48%',backgroundColor:C.card,borderRadius:16,padding:16,marginBottom:12,alignItems:'center',borderWidth:1,borderColor:C.border},
+  catItemActive:{borderColor:C.accent,backgroundColor:C.accentMuted},
+  catLabel:{color:C.neutral,fontSize:12,fontWeight:'600',marginTop:8},
+  submitBtn:{backgroundColor:C.accent,marginHorizontal:20,paddingVertical:16,borderRadius:30,alignItems:'center'},
+  submitBtnText:{color:C.bg,fontWeight:'800',fontSize:15},
 });

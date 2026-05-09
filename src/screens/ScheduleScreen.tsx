@@ -1,50 +1,45 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Bell, User, ChevronLeft, ChevronRight, Check, X, Clock } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Check, X, Clock } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { AppHeader } from '../components/AppHeader';
 
-const days = [
-  { day: 'Mon', date: 15, hasEvent: false },
-  { day: 'Tue', date: 16, hasEvent: true },
-  { day: 'Wed', date: 17, hasEvent: true },
-  { day: 'Thu', date: 18, hasEvent: true },
-  { day: 'Fri', date: 19, hasEvent: false },
-  { day: 'Sat', date: 20, hasEvent: true }, // The image shows dot on 20, wait, Monday has the dot. "Sat 20" has a dot when not selected. Yes, I'll put events for styling.
-  { day: 'Sun', date: 21, hasEvent: false }
+const C = {
+  bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
+  neutral: '#94A3B8', text: '#E2E8F0', border: 'rgba(148,163,184,0.12)',
+  accentMuted: 'rgba(204,255,0,0.08)', accentBorder: 'rgba(204,255,0,0.25)',
+};
+
+const WEEKS = [
+  [{ day:'Mon',date:15,hasEvent:false},{day:'Tue',date:16,hasEvent:true},{day:'Wed',date:17,hasEvent:true},{day:'Thu',date:18,hasEvent:true},{day:'Fri',date:19,hasEvent:false},{day:'Sat',date:20,hasEvent:true},{day:'Sun',date:21,hasEvent:false}],
+  [{ day:'Mon',date:22,hasEvent:true},{day:'Tue',date:23,hasEvent:false},{day:'Wed',date:24,hasEvent:true},{day:'Thu',date:25,hasEvent:false},{day:'Fri',date:26,hasEvent:true},{day:'Sat',date:27,hasEvent:true},{day:'Sun',date:28,hasEvent:false}],
 ];
+const MONTH_LABELS = ['Mar 15–21','Mar 22–28'];
 
-const EventCard = ({ title, tag, isClass, details, isConfirmed }: any) => (
-  <View style={styles.eventCardWrapper}>
-    <View style={styles.accentBorder} />
-    <View style={styles.eventCard}>
-      <View style={styles.eventCardTop}>
-        <View style={styles.tagRow}>
-          <View style={[styles.tag, isClass ? styles.tagClass : styles.tagSession]}>
-            <Text style={[styles.tagText, isClass ? styles.tagTextClass : styles.tagTextSession]}>{tag}</Text>
+type Status = 'confirmed'|'declined'|'pending';
+
+const EventCard = ({ title, tag, isClass, details, status, onConfirm, onDecline }: any) => (
+  <View style={s.eventCardWrapper}>
+    <View style={s.accentBorder} />
+    <View style={s.eventCard}>
+      <View style={s.eventCardTop}>
+        <View style={s.tagRow}>
+          <View style={[s.tag, isClass ? s.tagClass : s.tagSession]}>
+            <Text style={[s.tagText, isClass ? s.tagTextClass : s.tagTextSession]}>{tag}</Text>
           </View>
-          {isConfirmed && (
-            <View style={styles.confirmedRow}>
-              <Check size={12} color="#208B59" style={{ marginRight: 4 }} />
-              <Text style={styles.confirmedText}>Confirmed</Text>
-            </View>
-          )}
+          {status==='confirmed' && <View style={s.confirmedRow}><Check size={12} color={C.accent} style={{marginRight:4}}/><Text style={s.confirmedText}>Confirmed</Text></View>}
+          {status==='declined' && <View style={s.declinedRow}><X size={12} color="#F87171" style={{marginRight:4}}/><Text style={s.declinedText}>Declined</Text></View>}
         </View>
-        
-        {!isConfirmed && (
-             <View style={styles.actionButtonsRow}>
-               <TouchableOpacity style={styles.actionAccept}>
-                 <Check size={16} color="#208B59" />
-               </TouchableOpacity>
-               <TouchableOpacity style={styles.actionDecline}>
-                 <X size={16} color="#5B738B" />
-               </TouchableOpacity>
-             </View>
+        {status==='pending' && (
+          <View style={s.actionButtonsRow}>
+            <TouchableOpacity style={s.actionAccept} onPress={onConfirm}><Check size={15} color={C.accent}/></TouchableOpacity>
+            <TouchableOpacity style={s.actionDecline} onPress={onDecline}><X size={15} color="#F87171"/></TouchableOpacity>
+          </View>
         )}
       </View>
-      
-      <Text style={styles.eventTitle}>{title}</Text>
-      <Text style={styles.eventDetails}>{details}</Text>
+      <Text style={s.eventTitle}>{title}</Text>
+      <Text style={s.eventDetails}>{details}</Text>
     </View>
   </View>
 );
@@ -52,155 +47,127 @@ const EventCard = ({ title, tag, isClass, details, isConfirmed }: any) => (
 export const ScheduleScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const [weekIdx, setWeekIdx] = useState(0);
   const [activeDate, setActiveDate] = useState(15);
+  const [eventStates, setEventStates] = useState<{[k:number]:Status}>({});
+
+  const days = WEEKS[weekIdx];
+  const goBack = () => { if(weekIdx>0){setWeekIdx(w=>w-1);setActiveDate(WEEKS[weekIdx-1][0].date);}};
+  const goForward = () => { if(weekIdx<WEEKS.length-1){setWeekIdx(w=>w+1);setActiveDate(WEEKS[weekIdx+1][0].date);}};
+  const setStatus = (id:number,status:Status) => setEventStates(p=>({...p,[id]:status}));
+
+  const getEvents = (date:number) => {
+    if(date===15) return [{id:1,title:'Badminton Session',tag:'SESSION',details:'6:00 PM • 90 min • Court 1',pre:true}];
+    if(date===20) return [{id:20,title:'Weekend Open Play',tag:'SESSION',details:'10:00 AM • 120 min',pre:false},{id:21,title:'Coaching Session',tag:'CLASS',isClass:true,details:'2:00 PM • 60 min',pre:false}];
+    if([16,17,18,22,24,26,27].includes(date)) return [{id:date*10,title:'Training Session',tag:'SESSION',details:'5:00 PM • 60 min • Court 3',pre:false}];
+    return [];
+  };
+
+  const events = getEvents(activeDate);
 
   return (
-    <View style={styles.container}>
-       <View style={[styles.topSection, { paddingTop: insets.top + 16 }]}>
-          <View style={styles.header}>
-            <View style={styles.headerLogoCircle}>
-              <Text style={styles.headerLogoText}>CF</Text>
+    <View style={s.container}>
+      <View style={{ paddingTop: insets.top + 10 }}>
+        <AppHeader />
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{paddingBottom:110}}>
+        <View style={s.pageHeader}>
+          <Text style={s.pageTitle}>Schedule</Text>
+          <Text style={s.pageDateText}>{MONTH_LABELS[weekIdx]}</Text>
+        </View>
+
+        <View style={s.dateSelectorRow}>
+          <TouchableOpacity onPress={goBack} style={[s.arrowBtn,weekIdx===0&&{opacity:0.3}]}>
+            <ChevronLeft size={20} color={C.neutral}/>
+          </TouchableOpacity>
+          {days.map(item=>{
+            const isActive=activeDate===item.date;
+            return (
+              <TouchableOpacity key={item.date} style={[s.dateChip,isActive&&s.dateChipActive]} onPress={()=>setActiveDate(item.date)}>
+                <Text style={[s.dayText,isActive&&s.textActive]}>{item.day}</Text>
+                <Text style={[s.dateText,isActive&&s.textActive]}>{item.date}</Text>
+                {item.hasEvent&&<View style={[s.eventDot,isActive&&{backgroundColor:C.accentBg}]}/>}
+              </TouchableOpacity>
+            );
+          })}
+          <TouchableOpacity onPress={goForward} style={[s.arrowBtn,weekIdx===WEEKS.length-1&&{opacity:0.3}]}>
+            <ChevronRight size={20} color={C.neutral}/>
+          </TouchableOpacity>
+        </View>
+
+        {events.length>0 ? (
+          <>
+            <View style={s.summaryCard}>
+              <View>
+                <Text style={s.summaryDate}>{days.find(d=>d.date===activeDate)?.day}, Mar {activeDate}</Text>
+                <Text style={s.summaryCount}>{events.length} event{events.length>1?'s':''}</Text>
+              </View>
+              <View style={s.durationChip}>
+                <Clock size={13} color={C.accent} style={{marginRight:6}}/>
+                <Text style={s.durationText}>{events.length*60} min</Text>
+              </View>
             </View>
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>CourtFund</Text>
-              <Text style={styles.headerSubtitle}>Personal Tracker</Text>
-            </View>
-            <TouchableOpacity style={styles.headerIconWrapper}><Bell color="#8A9BB3" size={20} /></TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.headerIconWrapper, { backgroundColor: '#208B59', marginLeft: 12 }]}
-              onPress={() => navigation.navigate('Profile')}
-            >
-              <User color="#FFF" size={20} />
-            </TouchableOpacity>
+            {events.map(ev=>(
+              <EventCard key={ev.id} title={ev.title} tag={ev.tag} isClass={ev.isClass} details={ev.details}
+                status={ev.pre?'confirmed':(eventStates[ev.id]??'pending')}
+                onConfirm={()=>setStatus(ev.id,'confirmed')}
+                onDecline={()=>setStatus(ev.id,'declined')}
+              />
+            ))}
+          </>
+        ) : (
+          <View style={s.emptyState}>
+            <Text style={s.emptyIcon}>📅</Text>
+            <Text style={s.emptyTitle}>No events</Text>
+            <Text style={s.emptyDesc}>No sessions scheduled for this day.</Text>
           </View>
-       </View>
-
-       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-         
-         <View style={styles.pageHeader}>
-           <Text style={styles.pageTitle}>Schedule</Text>
-           <Text style={styles.pageDateText}>March 2026</Text>
-         </View>
-
-         <View style={styles.dateSelectorRow}>
-           <TouchableOpacity><ChevronLeft size={20} color="#5B738B" /></TouchableOpacity>
-           {days.map((item) => {
-             const isActive = activeDate === item.date;
-             return (
-               <TouchableOpacity 
-                 key={item.date} 
-                 style={[styles.dateChip, isActive && styles.dateChipActive]}
-                 onPress={() => setActiveDate(item.date)}
-               >
-                 <Text style={[styles.dayText, isActive && styles.textActive]}>{item.day}</Text>
-                 <Text style={[styles.dateText, isActive && styles.textActive]}>{item.date}</Text>
-                 {!isActive && item.hasEvent && <View style={styles.eventDot} />}
-                 {isActive && item.hasEvent && <View style={[styles.eventDot, { backgroundColor: '#FFF' }]} />}
-               </TouchableOpacity>
-             )
-           })}
-           <TouchableOpacity><ChevronRight size={20} color="#5B738B" /></TouchableOpacity>
-         </View>
-
-         {activeDate === 15 ? (
-           <>
-             <View style={styles.summaryCard}>
-               <View>
-                 <Text style={styles.summaryDate}>Mon, Mar 15</Text>
-                 <Text style={styles.summaryCount}>1 event</Text>
-               </View>
-               <View style={styles.durationChip}>
-                 <Clock size={14} color="#208B59" style={{ marginRight: 6 }} />
-                 <Text style={styles.durationText}>90 min</Text>
-               </View>
-             </View>
-             
-             <EventCard 
-                title="Badminton Session"
-                tag="SESSION"
-                isConfirmed={true}
-                details="6:00 PM • 90 min • Main Hall, Court 1"
-             />
-           </>
-         ) : (
-           <>
-             <View style={styles.summaryCard}>
-               <View>
-                 <Text style={styles.summaryDate}>Sat, Mar 20</Text>
-                 <Text style={styles.summaryCount}>2 events</Text>
-               </View>
-               <View style={styles.durationChip}>
-                 <Clock size={14} color="#208B59" style={{ marginRight: 6 }} />
-                 <Text style={styles.durationText}>180 min</Text>
-               </View>
-             </View>
-
-             <EventCard 
-                title="Weekend Open Play"
-                tag="SESSION"
-                isConfirmed={false}
-                details="10:00 AM • 120 min • Main Hall"
-             />
-             <EventCard 
-                title="Coaching Session"
-                tag="CLASS"
-                isClass={true}
-                isConfirmed={false}
-                details="2:00 PM • 60 min • Court 2"
-             />
-           </>
-         )}
-
-       </ScrollView>
+        )}
+      </ScrollView>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F0F2F5' },
-  topSection: { backgroundColor: '#13284B', paddingHorizontal: 20, paddingBottom: 20 },
-  header: { flexDirection: 'row', alignItems: 'center' },
-  headerLogoCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#3A2E22', justifyContent: 'center', alignItems: 'center', opacity: 0.8 },
-  headerLogoText: { color: '#DEA54B', fontWeight: 'bold', fontSize: 18 },
-  headerTextContainer: { flex: 1, marginLeft: 12 },
-  headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '700' },
-  headerSubtitle: { color: '#8A9BB3', fontSize: 13, marginTop: 2 },
-  headerIconWrapper: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
-  
-  pageHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginHorizontal: 20, marginTop: 24, marginBottom: 20 },
-  pageTitle: { fontSize: 22, fontWeight: '700', color: '#13284B' },
-  pageDateText: { fontSize: 15, color: '#5B738B' },
-
-  dateSelectorRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, marginBottom: 24 },
-  dateChip: { width: 44, paddingVertical: 10, backgroundColor: '#FFF', borderRadius: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
-  dateChipActive: { backgroundColor: '#208B59' },
-  dayText: { fontSize: 12, color: '#5B738B', marginBottom: 4 },
-  dateText: { fontSize: 16, fontWeight: '700', color: '#13284B' },
-  textActive: { color: '#FFF' },
-  eventDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#DEA54B', marginTop: 4 },
-
-  summaryCard: { marginHorizontal: 20, backgroundColor: '#FFF', borderRadius: 20, paddingHorizontal: 20, paddingVertical: 18, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 1 },
-  summaryDate: { fontSize: 16, fontWeight: '700', color: '#13284B', marginBottom: 4 },
-  summaryCount: { fontSize: 13, color: '#5B738B' },
-  durationChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-  durationText: { color: '#208B59', fontWeight: '700', fontSize: 14 },
-
-  eventCardWrapper: { flexDirection: 'row', marginHorizontal: 20, marginBottom: 16, backgroundColor: '#FFF', borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 1, overflow: 'hidden' },
-  accentBorder: { width: 6, backgroundColor: '#DEA54B' },
-  eventCard: { flex: 1, padding: 20 },
-  eventCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, minHeight: 28 },
-  tagRow: { flexDirection: 'row', alignItems: 'center' },
-  tag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginRight: 12 },
-  tagSession: { backgroundColor: '#E8F5E9' },
-  tagClass: { backgroundColor: '#FFF3E0' },
-  tagText: { fontSize: 10, fontWeight: 'bold', letterSpacing: 1 },
-  tagTextSession: { color: '#208B59' },
-  tagTextClass: { color: '#C18D37' },
-  confirmedRow: { flexDirection: 'row', alignItems: 'center' },
-  confirmedText: { fontSize: 12, color: '#208B59', fontWeight: '600' },
-  actionButtonsRow: { flexDirection: 'row', alignItems: 'center', position: 'absolute', right: 0, top: -4 },
-  actionAccept: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#E8F5E9', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
-  actionDecline: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F0F2F5', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
-  eventTitle: { fontSize: 16, fontWeight: '700', color: '#13284B', marginBottom: 6 },
-  eventDetails: { fontSize: 13, color: '#5B738B' }
+const s = StyleSheet.create({
+  container:{flex:1,backgroundColor:C.bg},
+  pageHeader:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-end',marginHorizontal:20,marginBottom:20},
+  pageTitle:{fontSize:24,fontWeight:'800',color:C.text},
+  pageDateText:{fontSize:13,color:C.neutral},
+  dateSelectorRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:10,marginBottom:24},
+  arrowBtn:{width:32,height:32,borderRadius:16,backgroundColor:C.card,justifyContent:'center',alignItems:'center',borderWidth:1,borderColor:C.border},
+  dateChip:{width:38,paddingVertical:10,backgroundColor:C.card,borderRadius:12,alignItems:'center',borderWidth:1,borderColor:C.border},
+  dateChipActive:{backgroundColor:C.accent,borderColor:C.accent},
+  dayText:{fontSize:10,color:C.neutral,marginBottom:3},
+  dateText:{fontSize:14,fontWeight:'700',color:C.text},
+  textActive:{color:C.accentBg},
+  eventDot:{width:5,height:5,borderRadius:3,backgroundColor:C.accent,marginTop:3},
+  summaryCard:{marginHorizontal:20,backgroundColor:C.card,borderRadius:14,paddingHorizontal:18,paddingVertical:14,flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:14,borderWidth:1,borderColor:C.border},
+  summaryDate:{fontSize:15,fontWeight:'700',color:C.text,marginBottom:3},
+  summaryCount:{fontSize:12,color:C.neutral},
+  durationChip:{flexDirection:'row',alignItems:'center',backgroundColor:C.accentMuted,paddingHorizontal:12,paddingVertical:6,borderRadius:20,borderWidth:1,borderColor:C.accentBorder},
+  durationText:{color:C.accent,fontWeight:'700',fontSize:13},
+  eventCardWrapper:{flexDirection:'row',marginHorizontal:20,marginBottom:14,backgroundColor:C.card,borderRadius:16,overflow:'hidden',borderWidth:1,borderColor:C.border},
+  accentBorder:{width:4,backgroundColor:C.accent},
+  eventCard:{flex:1,padding:16},
+  eventCardTop:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10,minHeight:28},
+  tagRow:{flexDirection:'row',alignItems:'center'},
+  tag:{paddingHorizontal:8,paddingVertical:4,borderRadius:6,marginRight:10},
+  tagSession:{backgroundColor:C.accentMuted,borderWidth:1,borderColor:C.accentBorder},
+  tagClass:{backgroundColor:'rgba(148,163,184,0.1)',borderWidth:1,borderColor:C.border},
+  tagText:{fontSize:10,fontWeight:'700',letterSpacing:1},
+  tagTextSession:{color:C.accent},
+  tagTextClass:{color:C.neutral},
+  confirmedRow:{flexDirection:'row',alignItems:'center'},
+  confirmedText:{fontSize:12,color:C.accent,fontWeight:'600'},
+  declinedRow:{flexDirection:'row',alignItems:'center'},
+  declinedText:{fontSize:12,color:'#F87171',fontWeight:'600'},
+  actionButtonsRow:{flexDirection:'row',alignItems:'center'},
+  actionAccept:{width:30,height:30,borderRadius:15,backgroundColor:C.accentMuted,justifyContent:'center',alignItems:'center',marginLeft:8,borderWidth:1,borderColor:C.accentBorder},
+  actionDecline:{width:30,height:30,borderRadius:15,backgroundColor:'rgba(248,113,113,0.1)',justifyContent:'center',alignItems:'center',marginLeft:8,borderWidth:1,borderColor:'rgba(248,113,113,0.3)'},
+  eventTitle:{fontSize:15,fontWeight:'700',color:C.text,marginBottom:5},
+  eventDetails:{fontSize:12,color:C.neutral},
+  emptyState:{alignItems:'center',paddingVertical:60},
+  emptyIcon:{fontSize:40,marginBottom:16},
+  emptyTitle:{fontSize:18,fontWeight:'700',color:C.text,marginBottom:8},
+  emptyDesc:{fontSize:14,color:C.neutral},
 });
