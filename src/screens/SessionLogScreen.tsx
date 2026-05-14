@@ -5,6 +5,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LogSessionModal } from '../components/LogSessionModal';
 import { AppHeader } from '../components/AppHeader';
+import { createSession, listMySessions } from '../data/sessions';
+import { minutesFromDurationLabel } from '../lib/datetime';
+import { recomputeMyStats } from '../data/profiles';
 
 const C = {
   bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
@@ -42,17 +45,30 @@ export const SessionLogScreen = () => {
   const insets = useSafeAreaInsets();
   const route = useRoute<any>();
   const [modalVisible, setModalVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<any[]>([]);
 
   useEffect(() => {
     if (route.params?.openModal) setModalVisible(true);
   }, [route.params]);
 
-  const sessions = [
-    { title: 'Badminton Doubles Session', date: 'Mar 14 • 90 min', stars: 4, insight: 'Strong doubles play. Your net game improved 12% over last 5 sessions.' },
-    { title: 'Training Class', date: 'Mar 12 • 60 min', stars: 3, insight: 'Consistent performance. Footwork drills paying off.' },
-    { title: 'Sunday Singles Match', date: 'Mar 10 • 90 min', stars: 5, insight: 'Peak performance! Your win rate in singles is up 20% this month.' },
-    { title: 'Drills & Fitness', date: 'Mar 8 • 60 min', stars: 4, insight: 'Good drill session. Defense reactions getting sharper.' },
-  ];
+  const load = async () => {
+    try {
+      setErrorText(null);
+      setLoading(true);
+      const rows = await listMySessions();
+      setSessions(rows);
+    } catch (e: any) {
+      setErrorText(e?.message ?? 'Failed to load sessions.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
 
   return (
     <View style={s.container}>
@@ -69,10 +85,46 @@ export const SessionLogScreen = () => {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 110 }}>
-        {sessions.map((sess, i) => <SessionCard key={i} {...sess} />)}
+        {loading ? (
+          <Text style={{ color: C.neutral }}>Loading…</Text>
+        ) : errorText ? (
+          <Text style={{ color: '#F87171', fontWeight: '700' }}>{errorText}</Text>
+        ) : sessions.length === 0 ? (
+          <Text style={{ color: C.neutral }}>No sessions yet. Log one.</Text>
+        ) : (
+          sessions.map((sess: any) => {
+            const d = new Date(sess.occurred_at);
+            const dateLabel = `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} • ${sess.duration_minutes} min`;
+            return (
+              <SessionCard
+                key={sess.id}
+                title={sess.title}
+                date={dateLabel}
+                stars={sess.rating ?? 0}
+                insight={sess.notes ?? 'Logged session.'}
+              />
+            );
+          })
+        )}
       </ScrollView>
 
-      <LogSessionModal visible={modalVisible} onClose={() => setModalVisible(false)} onSubmit={() => console.log('Submitted')} />
+      <LogSessionModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSubmit={async data => {
+          const durationMinutes = data.durationLabel ? minutesFromDurationLabel(data.durationLabel) : 60;
+          const title = data.playType ? `${data.playType} Session` : 'Court Session';
+          await createSession({
+            title,
+            duration_minutes: durationMinutes,
+            rating: data.rating || null,
+            notes: data.level ? `Level: ${data.level}` : null,
+            insight: 'Session saved to Supabase.',
+          });
+          await recomputeMyStats();
+          await load();
+        }}
+      />
     </View>
   );
 };

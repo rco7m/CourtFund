@@ -9,6 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react-native';
+import { useAuth } from '../providers/AuthProvider';
 
 const { width, height } = Dimensions.get('window');
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -30,8 +31,11 @@ const GridBackground = () => (
 
 export const LoginScreen = () => {
   const navigation = useNavigation<NavigationProp>();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
@@ -42,6 +46,23 @@ export const LoginScreen = () => {
   };
   const handlePressOut = () => {
     Animated.spring(buttonScale, { toValue: 1, useNativeDriver: true }).start();
+  };
+
+  const handleLogin = async () => {
+    setErrorText(null);
+    if (!email.trim() || !password) {
+      setErrorText('Enter email and password.');
+      return;
+    }
+    try {
+      setLoading(true);
+      await signIn(email.trim(), password);
+      navigation.navigate('MainTabs');
+    } catch (e: any) {
+      setErrorText(e?.message ?? 'Login failed.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -118,6 +139,8 @@ export const LoginScreen = () => {
               </View>
             </View>
 
+            {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
+
             {/* Sign In Button */}
             <Animated.View style={{ transform: [{ scale: buttonScale }], marginTop: 8 }}>
               <TouchableOpacity
@@ -125,9 +148,10 @@ export const LoginScreen = () => {
                 activeOpacity={0.9}
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
-                onPress={() => navigation.navigate('MainTabs')}
+                onPress={handleLogin}
+                disabled={loading}
               >
-                <Text style={styles.primaryButtonText}>Sign In</Text>
+                <Text style={styles.primaryButtonText}>{loading ? 'Signing in…' : 'Sign In'}</Text>
               </TouchableOpacity>
             </Animated.View>
 
@@ -274,6 +298,13 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  errorText: {
+    color: '#F87171',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: -6,
+    marginBottom: 10,
   },
   divider: {
     flexDirection: 'row',

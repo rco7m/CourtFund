@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { ChevronLeft, Check, Star, AlertTriangle, Award, Activity } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { AppHeader } from '../components/AppHeader';
+import { useAuth } from '../providers/AuthProvider';
+import { getMyProfile, getMyStats, recomputeMyStats } from '../data/profiles';
 
 const C = {
   bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
@@ -88,6 +90,38 @@ const RecentSession = ({ title, date, stars, isLast }: any) => (
 export const ProfileScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const { signOut } = useAuth();
+  const [displayName, setDisplayName] = useState<string>('Player Profile');
+  const [stats, setStats] = useState<{ sessions: number; hours: string; avgRating: string; streak: string }>({
+    sessions: 0,
+    hours: '0h',
+    avgRating: '-',
+    streak: '0d',
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        await recomputeMyStats();
+        const profile = await getMyProfile();
+        const s = await getMyStats();
+        if (!mounted) return;
+        setDisplayName(profile.display_name || profile.email || 'Player Profile');
+        setStats({
+          sessions: s.sessions_count ?? 0,
+          hours: `${Math.round((s.hours_total ?? 0) * 10) / 10}h`,
+          avgRating: s.avg_rating ? String(s.avg_rating) : '-',
+          streak: `${s.streak_days ?? 0}d`,
+        });
+      } catch {
+        // keep defaults
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <View style={s.container}>
@@ -102,18 +136,27 @@ export const ProfileScreen = () => {
             <Image source={require('../assets/logo.png')} style={{width:36,height:36,borderRadius:8}} resizeMode="contain"/>
           </View>
           <View style={s.profileInfo}>
-            <Text style={s.profileName}>Player Profile</Text>
-            <Text style={s.profileDesc}>Based on 5 logged sessions</Text>
+            <Text style={s.profileName}>{displayName}</Text>
+            <Text style={s.profileDesc}>Based on {stats.sessions} logged sessions</Text>
           </View>
+          <TouchableOpacity
+            style={s.signOutBtn}
+            onPress={async () => {
+              await signOut();
+              navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+            }}
+          >
+            <Text style={s.signOutText}>Sign out</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Stats Grid — no grade/level */}
         <View style={s.statsGrid}>
           {[
-            {value:'5',label:'SESSIONS'},
-            {value:'6h',label:'HOURS'},
-            {value:'4.0',label:'AVG RATING'},
-            {value:'6d',label:'STREAK'},
+            {value:String(stats.sessions),label:'SESSIONS'},
+            {value:stats.hours,label:'HOURS'},
+            {value:stats.avgRating,label:'AVG RATING'},
+            {value:stats.streak,label:'STREAK'},
           ].map(c=>(
             <View key={c.label} style={s.statCard}>
               <Text style={s.statValue}>{c.value}</Text>
@@ -127,9 +170,9 @@ export const ProfileScreen = () => {
           <Text style={s.cardTitle}>SESSIONS PER MONTH</Text>
           <View style={s.chartContainer}>
             {[
-              {month:'Oct',h:'30%'},{month:'Nov',h:'50%'},
-              {month:'Dec',h:'40%'},{month:'Jan',h:'70%'},
-              {month:'Feb',h:'50%'},{month:'Mar',h:'90%',active:true},
+              {month:'Oct',h:30},{month:'Nov',h:50},
+              {month:'Dec',h:40},{month:'Jan',h:70},
+              {month:'Feb',h:50},{month:'Mar',h:90,active:true},
             ].map(b=>(
               <View key={b.month} style={s.barWrapper}>
                 <View style={[s.barFill,{height:b.h,backgroundColor:b.active?C.accent:'rgba(204,255,0,0.2)'}]}/>
@@ -213,6 +256,8 @@ const s = StyleSheet.create({
   profileInfo:{flex:1},
   profileName:{color:C.text,fontSize:20,fontWeight:'700',marginBottom:4},
   profileDesc:{color:C.neutral,fontSize:12},
+  signOutBtn:{paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:'rgba(148,163,184,0.1)',borderWidth:1,borderColor:C.border},
+  signOutText:{color:C.text,fontSize:12,fontWeight:'700'},
   statsGrid:{flexDirection:'row',flexWrap:'wrap',paddingHorizontal:14,justifyContent:'space-between',marginBottom:8},
   statCard:{width:'47%',backgroundColor:C.card,padding:16,borderRadius:16,marginBottom:10,marginHorizontal:2,borderWidth:1,borderColor:C.border},
   statValue:{fontSize:24,fontWeight:'800',color:C.accent,marginBottom:4},

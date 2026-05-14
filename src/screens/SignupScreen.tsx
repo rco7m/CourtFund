@@ -9,6 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { Eye, EyeOff, Mail, Lock, User, ChevronLeft } from 'lucide-react-native';
+import { useAuth } from '../providers/AuthProvider';
 
 const { width, height } = Dimensions.get('window');
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Signup'>;
@@ -33,10 +34,13 @@ const DotGrid = () => (
 
 export const SignupScreen = () => {
   const navigation = useNavigation<NavigationProp>();
+  const { signUp } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [nameFocused, setNameFocused] = useState(false);
@@ -55,6 +59,31 @@ export const SignupScreen = () => {
     return {label:'Strong',color:'#4ADE80',width:'100%'};
   };
   const strength = passwordStrength();
+
+  const handleCreateAccount = async () => {
+    setErrorText(null);
+    if (!name.trim()) {
+      setErrorText('Enter your name.');
+      return;
+    }
+    if (!email.trim() || !password) {
+      setErrorText('Enter email and password.');
+      return;
+    }
+    if (password !== confirm) {
+      setErrorText('Passwords do not match.');
+      return;
+    }
+    try {
+      setLoading(true);
+      await signUp(email.trim(), password, name.trim());
+      navigation.navigate('MainTabs');
+    } catch (e: any) {
+      setErrorText(e?.message ?? 'Signup failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={s.container}>
@@ -141,10 +170,13 @@ export const SignupScreen = () => {
             <Animated.View style={{transform:[{scale:buttonScale}],marginTop:8}}>
               <TouchableOpacity style={s.primaryButton} activeOpacity={0.9}
                 onPressIn={handlePressIn} onPressOut={handlePressOut}
-                onPress={()=>navigation.navigate('MainTabs')}>
-                <Text style={s.primaryButtonText}>Create Account</Text>
+                onPress={handleCreateAccount}
+                disabled={loading}>
+                <Text style={s.primaryButtonText}>{loading ? 'Creating…' : 'Create Account'}</Text>
               </TouchableOpacity>
             </Animated.View>
+
+            {errorText ? <Text style={s.errorText}>{errorText}</Text> : null}
 
             <TouchableOpacity style={s.loginRow} onPress={()=>navigation.goBack()}>
               <Text style={s.loginText}>Already have an account? </Text>
@@ -190,6 +222,7 @@ const s = StyleSheet.create({
   matchError:{fontSize:12,color:'#F87171',marginTop:6,fontWeight:'500'},
   primaryButton:{backgroundColor:C.accent,borderRadius:14,paddingVertical:17,alignItems:'center',shadowColor:C.accent,shadowOffset:{width:0,height:8},shadowOpacity:0.3,shadowRadius:16,elevation:5},
   primaryButtonText:{color:C.accentBg,fontSize:17,fontWeight:'800',letterSpacing:0.5},
+  errorText:{marginTop:12,color:'#F87171',fontSize:13,fontWeight:'700',textAlign:'center'},
   loginRow:{flexDirection:'row',justifyContent:'center',marginTop:18},
   loginText:{fontSize:14,color:C.neutral},
   loginLink:{fontSize:14,color:C.accent,fontWeight:'700'},

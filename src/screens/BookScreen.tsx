@@ -10,6 +10,8 @@ import {
   User, Flag, MapPin, Calendar, Clock, ChevronDown, X, Check,
 } from 'lucide-react-native';
 import { AppHeader } from '../components/AppHeader';
+import { createScheduleEvent } from '../data/schedule';
+import { minutesFromDurationLabel, parseLocalDateTime } from '../lib/datetime';
 
 const C = {
   bg: '#0A0F1E', card: '#1A2235', accent: '#CCFF00', accentBg: '#0A0F1E',
@@ -38,9 +40,31 @@ const OrganizeModal = ({ visible, onClose }: any) => {
   const [showCourts, setShowCourts] = useState(false);
   const [showSports, setShowSports] = useState(false);
   const [showDurations, setShowDurations] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [errorText, setErrorText] = useState<string | null>(null);
 
-  const handleSave = () => {
-    onClose();
+  const handleSave = async () => {
+    setErrorText(null);
+    try {
+      setSaving(true);
+      const start = parseLocalDateTime(date, time);
+      const durationMinutes = minutesFromDurationLabel(duration);
+      const startDate = start ?? new Date();
+      const endDate = new Date(startDate.getTime() + durationMinutes * 60_000);
+
+      await createScheduleEvent({
+        title: `${sport} Session`,
+        tag: 'session',
+        start_time: startDate.toISOString(),
+        end_time: endDate.toISOString(),
+        details: court ? `Court: ${court}` : null,
+      });
+      onClose();
+    } catch (e: any) {
+      setErrorText(e?.message ?? 'Failed to save.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -146,9 +170,11 @@ const OrganizeModal = ({ visible, onClose }: any) => {
             </View>
           )}
 
+          {errorText ? <Text style={om.errorText}>{errorText}</Text> : null}
+
           <TouchableOpacity style={om.saveBtn} onPress={handleSave}>
             <CheckCircle size={16} color={C.accentBg} style={{ marginRight: 8 }} />
-            <Text style={om.saveBtnText}>CONFIRM SESSION</Text>
+            <Text style={om.saveBtnText}>{saving ? 'SAVING…' : 'CONFIRM SESSION'}</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -333,4 +359,5 @@ const om = StyleSheet.create({
   previewDetail:{color:'#94A3B8',fontSize:13,marginBottom:4},
   saveBtn:{flexDirection:'row',alignItems:'center',justifyContent:'center',backgroundColor:'#CCFF00',marginHorizontal:20,marginTop:24,borderRadius:30,paddingVertical:15},
   saveBtnText:{color:'#0A0F1E',fontSize:15,fontWeight:'800',letterSpacing:1},
+  errorText:{color:'#F87171',fontWeight:'700',fontSize:13,textAlign:'center',marginHorizontal:20,marginTop:10},
 });

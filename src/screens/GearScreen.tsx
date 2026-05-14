@@ -1,23 +1,18 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { Package, Sparkles, Check, AlertTriangle, ClipboardList } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { LogGearModal } from '../components/LogGearModal';
 import { AppHeader } from '../components/AppHeader';
+import { createGearItem, listMyGear } from '../data/gear';
+import { createExpense } from '../data/expenses';
 
 const C = {
   bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
   neutral: '#94A3B8', text: '#E2E8F0', border: 'rgba(148,163,184,0.12)',
   accentMuted: 'rgba(204,255,0,0.08)', accentBorder: 'rgba(204,255,0,0.25)',
 };
-
-const GEAR_ITEMS = [
-  { id: 1, name: 'Yonex AS-30', cat: 'Shuttles', stock: 2, unit: 'tubes', low: true },
-  { id: 2, name: 'Wilson Pro Overgrip', cat: 'Grips', stock: 5, unit: 'rolls', low: false },
-  { id: 3, name: 'Li-Ning No.1 0.65mm', cat: 'Strings', stock: 1, unit: 'set', low: true },
-  { id: 4, name: 'Shoe Deodorizer', cat: 'Care', stock: 12, unit: 'uses', low: false },
-];
 
 const PurchaseItem = ({ name, date, price, isLast }: any) => (
   <View style={[s.purchaseRow, isLast && { borderBottomWidth: 0 }]}>
@@ -34,6 +29,26 @@ export const GearScreen = () => {
   const navigation = useNavigation<any>();
   const [modalVisible, setModalVisible] = useState(false);
   const [alertDismissed, setAlertDismissed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [gearItems, setGearItems] = useState<any[]>([]);
+
+  const load = async () => {
+    try {
+      setErrorText(null);
+      setLoading(true);
+      const rows = await listMyGear();
+      setGearItems(rows);
+    } catch (e: any) {
+      setErrorText(e?.message ?? 'Failed to load inventory.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
 
   return (
     <View style={s.container}>
@@ -73,22 +88,34 @@ export const GearScreen = () => {
 
         {/* Inventory Grid */}
         <View style={s.gridContainer}>
-          {GEAR_ITEMS.map(item => (
-            <View key={item.id} style={s.gearCard}>
-              <View style={s.gearHeader}>
-                <View style={s.catBadge}><Text style={s.catText}>{item.cat}</Text></View>
-                {item.low && <AlertTriangle size={14} color="#F87171" />}
-              </View>
-              <Text style={s.gearName}>{item.name}</Text>
-              <View style={s.stockRow}>
-                <Text style={[s.stockCount, item.low && { color: '#F87171' }]}>{item.stock}</Text>
-                <Text style={s.unitText}>{item.unit} left</Text>
-              </View>
-              <View style={s.progressTrack}>
-                <View style={[s.progressFill, { width: `${(item.stock / 15) * 100}%`, backgroundColor: item.low ? '#F87171' : C.accent }]} />
-              </View>
-            </View>
-          ))}
+          {loading ? (
+            <Text style={{ color: C.neutral, paddingHorizontal: 20 }}>Loading…</Text>
+          ) : errorText ? (
+            <Text style={{ color: '#F87171', paddingHorizontal: 20, fontWeight: '700' }}>{errorText}</Text>
+          ) : gearItems.length === 0 ? (
+            <Text style={{ color: C.neutral, paddingHorizontal: 20 }}>No gear yet. Log a purchase.</Text>
+          ) : (
+            gearItems.map(item => {
+              const low = (item.quantity ?? 0) <= 1;
+              const cat = String(item.category || 'other').toUpperCase();
+              return (
+                <View key={item.id} style={s.gearCard}>
+                  <View style={s.gearHeader}>
+                    <View style={s.catBadge}><Text style={s.catText}>{cat}</Text></View>
+                    {low && <AlertTriangle size={14} color="#F87171" />}
+                  </View>
+                  <Text style={s.gearName}>{item.name}</Text>
+                  <View style={s.stockRow}>
+                    <Text style={[s.stockCount, low && { color: '#F87171' }]}>{item.quantity ?? 1}</Text>
+                    <Text style={s.unitText}>{item.unit ?? 'pcs'} left</Text>
+                  </View>
+                  <View style={s.progressTrack}>
+                    <View style={[s.progressFill, { width: `${Math.min(100, ((item.quantity ?? 1) / 15) * 100)}%`, backgroundColor: low ? '#F87171' : C.accent }]} />
+                  </View>
+                </View>
+              );
+            })
+          )}
         </View>
 
         {/* Recent Purchases */}
@@ -97,16 +124,37 @@ export const GearScreen = () => {
           <Text style={s.sectionTitle}>Recent Purchases</Text>
         </View>
         <View style={s.listCard}>
-          <PurchaseItem name="Yonex AS-30 (Tube)" date="Mar 12, 2024" price="35.00" />
-          <PurchaseItem name="Wilson Overgrip (3-pk)" date="Mar 08, 2024" price="12.50" />
-          <PurchaseItem name="Li-Ning No.1 String" date="Feb 28, 2024" price="15.00" isLast />
+          {(gearItems ?? []).slice(0, 3).map((g, idx) => {
+            const dt = g.purchase_date ? new Date(g.purchase_date) : null;
+            const dateLabel = dt ? dt.toLocaleDateString() : '—';
+            const price = g.cost != null ? Number(g.cost).toFixed(2) : '0.00';
+            return <PurchaseItem key={g.id} name={g.name} date={dateLabel} price={price} isLast={idx === Math.min(2, gearItems.length - 1)} />;
+          })}
         </View>
       </ScrollView>
 
       <LogGearModal 
         visible={modalVisible} 
         onClose={() => setModalVisible(false)} 
-        onSubmit={(data) => console.log('Purchase logged:', data)} 
+        onSubmit={async (data) => {
+          const amount = Number.parseFloat(data.price || '0');
+          const qty = Number.parseInt(data.quantity || '1', 10) || 1;
+          const created = await createGearItem({
+            name: data.name || 'Gear Item',
+            category: 'other',
+            brand: null,
+            quantity: qty,
+            unit: 'pcs',
+            purchase_date: new Date().toISOString().slice(0, 10),
+            cost: Number.isFinite(amount) ? amount : null,
+            status: 'active',
+            notes: data.splitWith?.length ? `Split with ${data.splitWith.length} friend(s)` : null,
+          });
+          if (Number.isFinite(amount) && amount > 0) {
+            await createExpense({ type: 'gear', amount, note: `Gear: ${created.name}` });
+          }
+          await load();
+        }} 
       />
     </View>
   );

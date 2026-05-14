@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Dimensions, Animated,
@@ -11,6 +11,7 @@ import {
   CalendarPlus, Divide, UserPlus, FileText,
 } from 'lucide-react-native';
 import { AppHeader } from '../components/AppHeader';
+import { listMyExpenses } from '../data/expenses';
 
 const C = {
   bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
@@ -96,6 +97,22 @@ const ExpenseItem = ({ title, subtitle, amount, isLast }: any) => (
 export const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const [expenses, setExpenses] = useState<any[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    listMyExpenses(10)
+      .then(rows => {
+        if (!mounted) return;
+        setExpenses(rows);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const totalSpend = useMemo(() => (expenses ?? []).reduce((acc, e) => acc + (Number(e.amount) || 0), 0), [expenses]);
 
   return (
     <View style={s.container}>
@@ -106,16 +123,19 @@ export const HomeScreen = () => {
         <View style={s.topSection}>
           <View style={s.dashboardCard}>
             <Text style={s.myExpensesLabel}>MY EXPENSES</Text>
-            <Text style={s.totalAmount}>$283<Text style={s.amountDecimal}>.50</Text></Text>
+            <Text style={s.totalAmount}>
+              ${Math.floor(totalSpend)}
+              <Text style={s.amountDecimal}>.{String(Math.round((totalSpend % 1) * 100)).padStart(2, '0')}</Text>
+            </Text>
             <View style={s.statsRow}>
               <View>
                 <Text style={s.statLabel}>THIS MONTH</Text>
-                <Text style={s.statValue}>$283.50</Text>
+                <Text style={s.statValue}>${totalSpend.toFixed(2)}</Text>
               </View>
               <View style={s.statDivider} />
               <View>
                 <Text style={s.statLabel}>AVG MONTHLY</Text>
-                <Text style={s.statValue}>$340.00</Text>
+                <Text style={s.statValue}>—</Text>
               </View>
             </View>
             <AnimatedChart />
@@ -148,10 +168,24 @@ export const HomeScreen = () => {
             </TouchableOpacity>
           </View>
           <View style={s.expenseList}>
-            <ExpenseItem title="Court 2 Booking" subtitle="Today" amount="-$40.00" />
-            <ExpenseItem title="Shuttle Tube (AS-30)" subtitle="Yesterday" amount="-$35.00" />
-            <ExpenseItem title="Court 1 Booking" subtitle="Mar 11" amount="-$10.00" />
-            <ExpenseItem title="Grip Tape" subtitle="Mar 10" amount="-$8.50" isLast />
+            {expenses.length === 0 ? (
+              <ExpenseItem title="No expenses yet" subtitle="Log one from Wallet" amount="" isLast />
+            ) : (
+              expenses.slice(0, 4).map((tx: any, idx: number) => {
+                const dt = new Date(tx.occurred_at);
+                const subtitle = dt.toLocaleDateString();
+                const amount = `-$${Number(tx.amount).toFixed(2)}`;
+                return (
+                  <ExpenseItem
+                    key={tx.id}
+                    title={tx.note || tx.type}
+                    subtitle={subtitle}
+                    amount={amount}
+                    isLast={idx === Math.min(3, expenses.length - 1)}
+                  />
+                );
+              })
+            )}
           </View>
         </View>
       </ScrollView>

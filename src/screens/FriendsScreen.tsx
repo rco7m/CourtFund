@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator } from 'react-native';
 import { Bell, User, UserPlus, X, Check, Search, ArrowLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { listMyFriends, sendFriendRequest } from '../data/friends';
+import { supabase } from '../lib/supabase';
 
 const C = {
   bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
@@ -10,23 +12,29 @@ const C = {
   accentMuted: 'rgba(204,255,0,0.08)', accentBorder: 'rgba(204,255,0,0.25)',
 };
 
-const FRIENDS = [
-  { id: 1, name: 'Sarah Wilson', status: 'Online', initial: 'S' },
-  { id: 2, name: 'Mike Johnson', status: 'In Session', initial: 'M' },
-  { id: 3, name: 'Jin Woo', status: 'Away', initial: 'J' },
-  { id: 4, name: 'Lena Smith', status: 'Online', initial: 'L' },
-];
-
-const AddFriendModal = ({ visible, onClose }: any) => {
+const AddFriendModal = ({ visible, onClose, onSend }: any) => {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSend = () => {
-    setSent(true);
-    setTimeout(() => {
-      setSent(false);
-      onClose();
-    }, 1500);
+  const handleSend = async () => {
+    setErrorText(null);
+    if (!email.trim()) return;
+    try {
+      setLoading(true);
+      await onSend(email.trim());
+      setSent(true);
+      setTimeout(() => {
+        setSent(false);
+        setEmail('');
+        onClose();
+      }, 1200);
+    } catch (e: any) {
+      setErrorText(e?.message ?? 'Failed to send request.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -54,9 +62,10 @@ const AddFriendModal = ({ visible, onClose }: any) => {
                 onChangeText={setEmail}
                 autoCapitalize="none"
               />
-              <TouchableOpacity style={s.inviteBtn} onPress={handleSend}>
+              {errorText ? <Text style={s.modalError}>{errorText}</Text> : null}
+              <TouchableOpacity style={s.inviteBtn} onPress={handleSend} disabled={loading}>
                 <UserPlus size={18} color={C.accentBg} style={{ marginRight: 8 }} />
-                <Text style={s.inviteBtnText}>Send Friend Request</Text>
+                <Text style={s.inviteBtnText}>{loading ? 'Sending…' : 'Send Friend Request'}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -70,6 +79,77 @@ export const FriendsScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const [showAdd, setShowAdd] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [friends, setFriends] = useState<Array<{ id: string; name: string; status: string; initial: string }>>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setErrorText(null);
+        setLoading(true);
+        const rows = await listMyFriends();
+        const { data: userRes } = await supabase.auth.getUser();
+        const myId = userRes.user?.id;
+        const otherIds = rows
+          .map(r => (r.user_id === myId ? r.friend_user_id : r.user_id))
+          .filter(Boolean);
+
+        const { data: profiles, error } = await supabase
+          .from('profiles')
+          .select('id,display_name,email')
+          .in('id', otherIds);
+        if (error) throw error;
+        const map = new Map((profiles ?? []).map(p => [p.id, p]));
+
+        const mapped = rows.map(r => {
+          const otherId = r.user_id === myId ? r.friend_user_id : r.user_id;
+          const p = map.get(otherId);
+          const name = (p?.display_name || p?.email || 'Teammate') as string;
+          return {
+            id: r.id,
+            name,
+            status: r.status,
+            initial: name.slice(0, 1).toUpperCase(),
+          };
+        });
+
+        if (!mounted) return;
+        setFriends(mapped);
+      } catch (e: any) {
+        if (!mounted) return;
+        setErrorText(e?.message ?? 'Failed to load friends.');
+      } finally {
+        if (!mounted) return;
+        setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleInvite = async (email: string) => {
+    await sendFriendRequest(email);
+    // refresh
+    const rows = await listMyFriends();
+    const { data: userRes } = await supabase.auth.getUser();
+    const myId = userRes.user?.id;
+    const otherIds = rows.map(r => (r.user_id === myId ? r.friend_user_id : r.user_id));
+    const { data: profiles } = await supabase.from('profiles').select('id,display_name,email').in('id', otherIds);
+    const map = new Map((profiles ?? []).map(p => [p.id, p]));
+    setFriends(
+      rows.map(r => {
+        const otherId = r.user_id === myId ? r.friend_user_id : r.user_id;
+        const p = map.get(otherId);
+        const name = (p?.display_name || p?.email || 'Teammate') as string;
+        return { id: r.id, name, status: r.status, initial: name.slice(0, 1).toUpperCase() };
+      })
+    );
+  };
+
+  const hasFriends = friends.length > 0;
 
   return (
     <View style={s.container}>
@@ -97,25 +177,40 @@ export const FriendsScreen = () => {
 
         <Text style={s.sectionTitle}>MY TEAMMATES</Text>
         <View style={s.friendsList}>
-          {FRIENDS.map(f => (
-            <View key={f.id} style={s.friendRow}>
-              <View style={s.avatar}>
-                <Text style={s.avatarText}>{f.initial}</Text>
-                <View style={[s.statusDot, f.status === 'Online' && { backgroundColor: '#4ADE80' }]} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.friendName}>{f.name}</Text>
-                <Text style={s.friendStatus}>{f.status}</Text>
-              </View>
-              <TouchableOpacity style={s.msgBtn}>
-                <Text style={s.msgBtnText}>Message</Text>
-              </TouchableOpacity>
+          {loading ? (
+            <View style={s.loadingRow}>
+              <ActivityIndicator color={C.accent} />
+              <Text style={s.loadingText}>Loading…</Text>
             </View>
-          ))}
+          ) : errorText ? (
+            <View style={s.loadingRow}>
+              <Text style={s.errorText}>{errorText}</Text>
+            </View>
+          ) : !hasFriends ? (
+            <View style={s.loadingRow}>
+              <Text style={s.loadingText}>No friends yet. Invite someone.</Text>
+            </View>
+          ) : (
+            friends.map(f => (
+              <View key={f.id} style={s.friendRow}>
+                <View style={s.avatar}>
+                  <Text style={s.avatarText}>{f.initial}</Text>
+                  <View style={s.statusDot} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.friendName}>{f.name}</Text>
+                  <Text style={s.friendStatus}>{f.status}</Text>
+                </View>
+                <TouchableOpacity style={s.msgBtn} disabled>
+                  <Text style={s.msgBtnText}>Message</Text>
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
 
-      <AddFriendModal visible={showAdd} onClose={() => setShowAdd(false)} />
+      <AddFriendModal visible={showAdd} onClose={() => setShowAdd(false)} onSend={handleInvite} />
     </View>
   );
 };
@@ -145,10 +240,14 @@ const s = StyleSheet.create({
   modalTitle: { fontSize: 18, fontWeight: '700', color: C.text },
   modalLabel: { fontSize: 10, fontWeight: '700', color: C.neutral, marginBottom: 8, letterSpacing: 1 },
   modalInput: { backgroundColor: C.bg, borderRadius: 12, paddingHorizontal: 16, height: 50, fontSize: 15, color: C.text, borderWidth: 1, borderColor: C.border, marginBottom: 20 },
+  modalError: { color: '#F87171', fontSize: 12, fontWeight: '700', marginTop: -10, marginBottom: 12 },
   inviteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: C.accent, paddingVertical: 15, borderRadius: 30 },
   inviteBtnText: { color: C.accentBg, fontSize: 15, fontWeight: '800' },
   sentState: { alignItems: 'center', paddingVertical: 20 },
   sentCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: C.accentMuted, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
   sentTitle: { fontSize: 20, fontWeight: '800', color: C.text, marginBottom: 8 },
   sentDesc: { fontSize: 14, color: C.neutral, textAlign: 'center' },
+  loadingRow: { padding: 18, alignItems: 'center', justifyContent: 'center' },
+  loadingText: { color: C.neutral, fontSize: 13, marginTop: 10 },
+  errorText: { color: '#F87171', fontWeight: '700', fontSize: 13, textAlign: 'center' },
 });

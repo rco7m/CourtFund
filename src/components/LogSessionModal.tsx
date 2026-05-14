@@ -5,7 +5,7 @@ import { Star } from 'lucide-react-native';
 interface LogSessionModalProps {
   visible: boolean;
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: (data: { playType: string | null; level: string | null; rating: number; durationLabel: string | null }) => void;
 }
 
 export const LogSessionModal: React.FC<LogSessionModalProps> = ({ visible, onClose, onSubmit }) => {
@@ -33,7 +33,7 @@ export const LogSessionModal: React.FC<LogSessionModalProps> = ({ visible, onClo
   };
 
   const handleSubmit = () => {
-    onSubmit();
+    onSubmit({ playType, level, rating, durationLabel: duration });
     handleClose();
   };
 

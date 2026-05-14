@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { ChevronLeft, ChevronRight, Check, X, Clock } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { AppHeader } from '../components/AppHeader';
+import { listScheduleForRange, setScheduleStatus } from '../data/schedule';
 
 const C = {
   bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
@@ -49,21 +50,43 @@ export const ScheduleScreen = () => {
   const navigation = useNavigation<any>();
   const [weekIdx, setWeekIdx] = useState(0);
   const [activeDate, setActiveDate] = useState(15);
-  const [eventStates, setEventStates] = useState<{[k:number]:Status}>({});
+  const [loading, setLoading] = useState(true);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [events, setEvents] = useState<any[]>([]);
 
   const days = WEEKS[weekIdx];
   const goBack = () => { if(weekIdx>0){setWeekIdx(w=>w-1);setActiveDate(WEEKS[weekIdx-1][0].date);}};
   const goForward = () => { if(weekIdx<WEEKS.length-1){setWeekIdx(w=>w+1);setActiveDate(WEEKS[weekIdx+1][0].date);}};
-  const setStatus = (id:number,status:Status) => setEventStates(p=>({...p,[id]:status}));
 
-  const getEvents = (date:number) => {
-    if(date===15) return [{id:1,title:'Badminton Session',tag:'SESSION',details:'6:00 PM • 90 min • Court 1',pre:true}];
-    if(date===20) return [{id:20,title:'Weekend Open Play',tag:'SESSION',details:'10:00 AM • 120 min',pre:false},{id:21,title:'Coaching Session',tag:'CLASS',isClass:true,details:'2:00 PM • 60 min',pre:false}];
-    if([16,17,18,22,24,26,27].includes(date)) return [{id:date*10,title:'Training Session',tag:'SESSION',details:'5:00 PM • 60 min • Court 3',pre:false}];
-    return [];
-  };
+  const activeDayDate = useMemo(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), activeDate, 0, 0, 0, 0);
+  }, [activeDate]);
 
-  const events = getEvents(activeDate);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setErrorText(null);
+        setLoading(true);
+        const start = new Date(activeDayDate);
+        const end = new Date(activeDayDate);
+        end.setDate(end.getDate() + 1);
+        const rows = await listScheduleForRange(start.toISOString(), end.toISOString());
+        if (!mounted) return;
+        setEvents(rows);
+      } catch (e: any) {
+        if (!mounted) return;
+        setErrorText(e?.message ?? 'Failed to load schedule.');
+      } finally {
+        if (!mounted) return;
+        setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [activeDayDate]);
 
   return (
     <View style={s.container}>
@@ -100,22 +123,59 @@ export const ScheduleScreen = () => {
           <>
             <View style={s.summaryCard}>
               <View>
-                <Text style={s.summaryDate}>{days.find(d=>d.date===activeDate)?.day}, Mar {activeDate}</Text>
+                <Text style={s.summaryDate}>
+                  {activeDayDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                </Text>
                 <Text style={s.summaryCount}>{events.length} event{events.length>1?'s':''}</Text>
               </View>
               <View style={s.durationChip}>
                 <Clock size={13} color={C.accent} style={{marginRight:6}}/>
-                <Text style={s.durationText}>{events.length*60} min</Text>
+                <Text style={s.durationText}>
+                  {(events as any[]).reduce((acc, e) => {
+                    const a = new Date(e.start_time).getTime();
+                    const b = new Date(e.end_time).getTime();
+                    if (!isFinite(a) || !isFinite(b) || b <= a) return acc;
+                    return acc + Math.round((b - a) / 60000);
+                  }, 0)} min
+                </Text>
               </View>
             </View>
-            {events.map(ev=>(
-              <EventCard key={ev.id} title={ev.title} tag={ev.tag} isClass={ev.isClass} details={ev.details}
-                status={ev.pre?'confirmed':(eventStates[ev.id]??'pending')}
-                onConfirm={()=>setStatus(ev.id,'confirmed')}
-                onDecline={()=>setStatus(ev.id,'declined')}
-              />
-            ))}
+            {events.map((ev: any) => {
+              const start = new Date(ev.start_time);
+              const end = new Date(ev.end_time);
+              const details = `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ${Math.round(
+                (end.getTime() - start.getTime()) / 60000
+              )} min${ev.details ? ` • ${ev.details}` : ''}`;
+              const status: Status = ev.status === 'confirmed' ? 'confirmed' : ev.status === 'declined' ? 'declined' : 'pending';
+              return (
+                <EventCard
+                  key={ev.id}
+                  title={ev.title}
+                  tag={(ev.tag || 'SESSION').toUpperCase()}
+                  isClass={(ev.tag || '').toLowerCase() === 'class'}
+                  details={details}
+                  status={status}
+                  onConfirm={async () => {
+                    await setScheduleStatus(ev.id, 'confirmed');
+                    setEvents((prev: any[]) => prev.map(p => (p.id === ev.id ? { ...p, status: 'confirmed' } : p)));
+                  }}
+                  onDecline={async () => {
+                    await setScheduleStatus(ev.id, 'declined');
+                    setEvents((prev: any[]) => prev.map(p => (p.id === ev.id ? { ...p, status: 'declined' } : p)));
+                  }}
+                />
+              );
+            })}
           </>
+        ) : loading ? (
+          <View style={s.emptyState}>
+            <Text style={s.emptyTitle}>Loading…</Text>
+          </View>
+        ) : errorText ? (
+          <View style={s.emptyState}>
+            <Text style={s.emptyTitle}>Error</Text>
+            <Text style={s.emptyDesc}>{errorText}</Text>
+          </View>
         ) : (
           <View style={s.emptyState}>
             <Text style={s.emptyIcon}>📅</Text>

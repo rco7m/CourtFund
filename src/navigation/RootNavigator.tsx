@@ -6,6 +6,7 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { SignupScreen } from '../screens/SignupScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { BottomTabNavigator } from './BottomTabNavigator';
+import { useAuth } from '../providers/AuthProvider';
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -29,9 +30,18 @@ const CourtTheme = {
 };
 
 export const RootNavigator = () => {
+  const { initializing, session } = useAuth();
+
+  if (initializing) {
+    return null;
+  }
+
   return (
     <NavigationContainer theme={CourtTheme}>
-      <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Onboarding">
+      <Stack.Navigator
+        screenOptions={{ headerShown: false }}
+        initialRouteName={session ? 'MainTabs' : 'Onboarding'}
+      >
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
