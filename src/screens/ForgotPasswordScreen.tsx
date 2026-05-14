@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { Mail, ChevronLeft, SendHorizonal } from 'lucide-react-native';
+import { supabase } from '../lib/supabase';
 
 const { width, height } = Dimensions.get('window');
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'ForgotPassword'>;
@@ -53,6 +54,8 @@ export const ForgotPasswordScreen = () => {
   const [email, setEmail] = useState('');
   const [emailFocused, setEmailFocused] = useState(false);
   const [sent, setSent] = useState(false);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const buttonScale = useRef(new Animated.Value(1)).current;
   const successScale = useRef(new Animated.Value(0)).current;
 
@@ -63,14 +66,25 @@ export const ForgotPasswordScreen = () => {
     Animated.spring(buttonScale, { toValue: 1, useNativeDriver: true }).start();
   };
 
-  const handleSend = () => {
-    setSent(true);
-    Animated.spring(successScale, {
-      toValue: 1,
-      friction: 5,
-      tension: 80,
-      useNativeDriver: true,
-    }).start();
+  const handleSend = async () => {
+    setErrorText(null);
+    if (!email.trim()) return;
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+      if (error) throw error;
+      setSent(true);
+      Animated.spring(successScale, {
+        toValue: 1,
+        friction: 5,
+        tension: 80,
+        useNativeDriver: true,
+      }).start();
+    } catch (e: any) {
+      setErrorText(e?.message ?? 'Failed to send reset email.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -136,12 +150,14 @@ export const ForgotPasswordScreen = () => {
                     onPressIn={handlePressIn}
                     onPressOut={handlePressOut}
                     onPress={handleSend}
-                    disabled={!email}
+                    disabled={!email || loading}
                   >
                     <SendHorizonal color="#FFFFFF" size={18} style={{ marginRight: 8 }} />
-                    <Text style={styles.primaryButtonText}>Send Reset Link</Text>
+                    <Text style={styles.primaryButtonText}>{loading ? 'Sending…' : 'Send Reset Link'}</Text>
                   </TouchableOpacity>
                 </Animated.View>
+
+                {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
               </>
             ) : (
               /* Success State */
@@ -305,6 +321,13 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  errorText: {
+    marginTop: 12,
+    color: '#DC2626',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   successContainer: {
     alignItems: 'center',

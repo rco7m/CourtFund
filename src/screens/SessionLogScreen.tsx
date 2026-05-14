@@ -1,122 +1,149 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Bell, User, Plus, Sparkles, ClipboardList, Star } from 'lucide-react-native';
+import { Plus, Sparkles, ClipboardList, Star } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { LogSessionModal } from '../components/LogSessionModal';
-import { useRoute } from '@react-navigation/native';
+import { AppHeader } from '../components/AppHeader';
+import { createSession, listMySessions } from '../data/sessions';
+import { minutesFromDurationLabel } from '../lib/datetime';
+import { recomputeMyStats } from '../data/profiles';
+
+const C = {
+  bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
+  neutral: '#94A3B8', text: '#E2E8F0', border: 'rgba(148,163,184,0.12)',
+  accentMuted: 'rgba(204,255,0,0.08)', accentBorder: 'rgba(204,255,0,0.25)',
+};
 
 const SessionCard = ({ title, date, stars, insight }: any) => (
-  <View style={styles.sessionCard}>
-    <View style={styles.sessionHeader}>
-      <View style={styles.sessionTitleRow}>
-        <ClipboardList color="#DEA54B" size={16} style={{ marginRight: 8 }} />
+  <View style={s.sessionCard}>
+    <View style={s.sessionHeader}>
+      <View style={s.sessionTitleRow}>
+        <View style={s.sessionIcon}><ClipboardList color={C.accent} size={15} /></View>
         <View>
-           <Text style={styles.sessionTitle}>{title}</Text>
-           <Text style={styles.sessionDate}>{date}</Text>
+          <Text style={s.sessionTitle}>{title}</Text>
+          <Text style={s.sessionDate}>{date}</Text>
         </View>
       </View>
-      <View style={styles.starsRow}>
-        {[1, 2, 3, 4, 5].map((s) => (
-          <Star key={s} size={14} color="#DEA54B" fill={s <= stars ? '#DEA54B' : 'transparent'} style={{ marginLeft: 2 }} />
+      <View style={s.starsRow}>
+        {[1,2,3,4,5].map(n => (
+          <Star key={n} size={13} color={C.accent} fill={n <= stars ? C.accent : 'transparent'} style={{ marginLeft: 2 }} />
         ))}
       </View>
     </View>
-    <View style={styles.insightBox}>
-      <View style={styles.insightHeader}>
-        <Sparkles color="#DEA54B" size={12} style={{ marginRight: 4 }} />
-        <Text style={styles.insightLabel}>AI INSIGHT</Text>
+    <View style={s.insightBox}>
+      <View style={s.insightHeader}>
+        <Sparkles color={C.accent} size={11} style={{ marginRight: 5 }} />
+        <Text style={s.insightLabel}>AI INSIGHT</Text>
       </View>
-      <Text style={styles.insightText}>{insight}</Text>
+      <Text style={s.insightText}>{insight}</Text>
     </View>
   </View>
 );
 
 export const SessionLogScreen = () => {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const [modalVisible, setModalVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<any[]>([]);
 
   useEffect(() => {
-    if (route.params?.openModal) {
-      setModalVisible(true);
-    }
+    if (route.params?.openModal) setModalVisible(true);
   }, [route.params]);
 
-  const sessions = [
-    { title: 'Doubles — Advanced', date: 'Mar 14 • 90 min', stars: 4, insight: 'Strong doubles play. Your net game improved 12% over last 5 sessions.' },
-    { title: 'Class — Intermediate', date: 'Mar 12 • 60 min', stars: 3, insight: 'Consistent performance. Footwork drills paying off.' },
-    { title: 'Singles — Advanced', date: 'Mar 10 • 90 min', stars: 5, insight: 'Peak performance! Your win rate in singles is up 20% this month.' },
-    { title: 'Drills — Advanced', date: 'Mar 8 • 60 min', stars: 4, insight: 'Good drill session. Defense reactions getting sharper.' }
-  ];
+  const load = async () => {
+    try {
+      setErrorText(null);
+      setLoading(true);
+      const rows = await listMySessions();
+      setSessions(rows);
+    } catch (e: any) {
+      setErrorText(e?.message ?? 'Failed to load sessions.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
 
   return (
-    <View style={styles.container}>
-       <View style={[styles.topSection, { paddingTop: insets.top + 16 }]}>
-          <View style={styles.header}>
-            <View style={styles.headerLogoCircle}>
-              <Text style={styles.headerLogoText}>CF</Text>
-            </View>
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>CourtFund</Text>
-              <Text style={styles.headerSubtitle}>Personal Tracker</Text>
-            </View>
-            <TouchableOpacity style={styles.headerIconWrapper}><Bell color="#8A9BB3" size={20} /></TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.headerIconWrapper, { backgroundColor: '#208B59', marginLeft: 12 }]}
-              onPress={() => navigation.navigate('Profile')}
-            >
-              <User color="#FFF" size={20} />
-            </TouchableOpacity>
-          </View>
-       </View>
+    <View style={s.container}>
+      <View style={{ paddingTop: insets.top + 10 }}>
+        <AppHeader />
+      </View>
 
-       <View style={styles.pageHeader}>
-         <Text style={styles.pageTitle}>Session Log</Text>
-         <TouchableOpacity style={styles.logButton} onPress={() => setModalVisible(true)}>
-           <Plus color="#FFF" size={16} style={{ marginRight: 4 }} />
-           <Text style={styles.logButtonText}>Log Session</Text>
-         </TouchableOpacity>
-       </View>
+      <View style={s.pageHeader}>
+        <Text style={s.pageTitle}>Session Log</Text>
+        <TouchableOpacity style={s.logButton} onPress={() => setModalVisible(true)}>
+          <Plus size={15} color={C.accentBg} style={{ marginRight: 5 }} />
+          <Text style={s.logButtonText}>Log Session</Text>
+        </TouchableOpacity>
+      </View>
 
-       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}>
-         {sessions.map((s, i) => (
-           <SessionCard key={i} {...s} />
-         ))}
-       </ScrollView>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 110 }}>
+        {loading ? (
+          <Text style={{ color: C.neutral }}>Loading…</Text>
+        ) : errorText ? (
+          <Text style={{ color: '#F87171', fontWeight: '700' }}>{errorText}</Text>
+        ) : sessions.length === 0 ? (
+          <Text style={{ color: C.neutral }}>No sessions yet. Log one.</Text>
+        ) : (
+          sessions.map((sess: any) => {
+            const d = new Date(sess.occurred_at);
+            const dateLabel = `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} • ${sess.duration_minutes} min`;
+            return (
+              <SessionCard
+                key={sess.id}
+                title={sess.title}
+                date={dateLabel}
+                stars={sess.rating ?? 0}
+                insight={sess.notes ?? 'Logged session.'}
+              />
+            );
+          })
+        )}
+      </ScrollView>
 
-       <LogSessionModal 
-         visible={modalVisible} 
-         onClose={() => setModalVisible(false)}
-         onSubmit={() => console.log("Submitted")}
-       />
+      <LogSessionModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSubmit={async data => {
+          const durationMinutes = data.durationLabel ? minutesFromDurationLabel(data.durationLabel) : 60;
+          const title = data.playType ? `${data.playType} Session` : 'Court Session';
+          await createSession({
+            title,
+            duration_minutes: durationMinutes,
+            rating: data.rating || null,
+            notes: data.level ? `Level: ${data.level}` : null,
+            insight: 'Session saved to Supabase.',
+          });
+          await recomputeMyStats();
+          await load();
+        }}
+      />
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F0F2F5' },
-  topSection: { backgroundColor: '#13284B', paddingHorizontal: 20, paddingBottom: 20 },
-  header: { flexDirection: 'row', alignItems: 'center' },
-  headerLogoCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#3A2E22', justifyContent: 'center', alignItems: 'center', opacity: 0.8 },
-  headerLogoText: { color: '#DEA54B', fontWeight: 'bold', fontSize: 18 },
-  headerTextContainer: { flex: 1, marginLeft: 12 },
-  headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '700' },
-  headerSubtitle: { color: '#8A9BB3', fontSize: 13, marginTop: 2 },
-  headerIconWrapper: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
-  pageHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 20, marginTop: 24, marginBottom: 16 },
-  pageTitle: { fontSize: 20, fontWeight: 'bold', color: '#13284B' },
-  logButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#208B59', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
-  logButtonText: { color: '#FFF', fontWeight: '600', fontSize: 14 },
-  sessionCard: { backgroundColor: '#FFF', padding: 20, borderRadius: 24, marginBottom: 16, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8 },
-  sessionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-  sessionTitleRow: { flexDirection: 'row', paddingTop: 2 },
-  sessionTitle: { fontSize: 16, fontWeight: '700', color: '#13284B', marginBottom: 4 },
-  sessionDate: { fontSize: 13, color: '#5B738B' },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: C.bg },
+  pageHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 20, marginBottom: 16 },
+  pageTitle: { fontSize: 24, fontWeight: '800', color: C.text },
+  logButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.accent, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
+  logButtonText: { color: C.accentBg, fontWeight: '700', fontSize: 13 },
+  sessionCard: { backgroundColor: C.card, padding: 18, borderRadius: 16, marginBottom: 14, borderWidth: 1, borderColor: C.border },
+  sessionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+  sessionTitleRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  sessionIcon: { width: 30, height: 30, borderRadius: 8, backgroundColor: C.accentMuted, justifyContent: 'center', alignItems: 'center', marginRight: 10, borderWidth: 1, borderColor: C.accentBorder },
+  sessionTitle: { fontSize: 15, fontWeight: '700', color: C.text, marginBottom: 3 },
+  sessionDate: { fontSize: 12, color: C.neutral },
   starsRow: { flexDirection: 'row' },
-  insightBox: { backgroundColor: '#F5FAE8', padding: 16, borderRadius: 16 },
-  insightHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  insightLabel: { fontSize: 11, fontWeight: 'bold', color: '#13284B', letterSpacing: 0.5 },
-  insightText: { fontSize: 13, color: '#5B738B', lineHeight: 18 }
+  insightBox: { backgroundColor: C.accentMuted, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: C.accentBorder },
+  insightHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
+  insightLabel: { fontSize: 10, fontWeight: '700', color: C.accent, letterSpacing: 1 },
+  insightText: { fontSize: 12, color: C.neutral, lineHeight: 18 },
 });

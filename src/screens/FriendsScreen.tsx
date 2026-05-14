@@ -1,125 +1,253 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, TextInput, Modal } from 'react-native';
-import { Bell, User, UserPlus, X } from 'lucide-react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator } from 'react-native';
+import { Bell, User, UserPlus, X, Check, Search, ArrowLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { listMyFriends, sendFriendRequest } from '../data/friends';
+import { supabase } from '../lib/supabase';
 
-const FriendCard = ({ initial, name, sessions, level, color }: any) => (
-  <View style={styles.friendCard}>
-    <View style={[styles.avatar, { backgroundColor: color }]}>
-      <Text style={styles.avatarText}>{initial}</Text>
-    </View>
-    <View>
-      <Text style={styles.friendName}>{name}</Text>
-      <Text style={styles.friendStats}>{sessions} sessions • Level {level}</Text>
-    </View>
-  </View>
-);
+const C = {
+  bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
+  neutral: '#94A3B8', text: '#E2E8F0', border: 'rgba(148,163,184,0.12)',
+  accentMuted: 'rgba(204,255,0,0.08)', accentBorder: 'rgba(204,255,0,0.25)',
+};
+
+const AddFriendModal = ({ visible, onClose, onSend }: any) => {
+  const [email, setEmail] = useState('');
+  const [sent, setSent] = useState(false);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSend = async () => {
+    setErrorText(null);
+    if (!email.trim()) return;
+    try {
+      setLoading(true);
+      await onSend(email.trim());
+      setSent(true);
+      setTimeout(() => {
+        setSent(false);
+        setEmail('');
+        onClose();
+      }, 1200);
+    } catch (e: any) {
+      setErrorText(e?.message ?? 'Failed to send request.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide">
+      <View style={s.modalOverlay}>
+        <View style={s.modalSheet}>
+          <View style={s.modalHeader}>
+            <Text style={s.modalTitle}>Add Teammate</Text>
+            <TouchableOpacity onPress={onClose}><X size={20} color={C.neutral} /></TouchableOpacity>
+          </View>
+          {sent ? (
+            <View style={s.sentState}>
+              <View style={s.sentCircle}><Check size={30} color={C.accent} /></View>
+              <Text style={s.sentTitle}>Request Sent!</Text>
+              <Text style={s.sentDesc}>We've sent an invitation to {email}</Text>
+            </View>
+          ) : (
+            <>
+              <Text style={s.modalLabel}>INVITE BY EMAIL</Text>
+              <TextInput
+                style={s.modalInput}
+                placeholder="teammate@example.com"
+                placeholderTextColor={C.neutral}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+              />
+              {errorText ? <Text style={s.modalError}>{errorText}</Text> : null}
+              <TouchableOpacity style={s.inviteBtn} onPress={handleSend} disabled={loading}>
+                <UserPlus size={18} color={C.accentBg} style={{ marginRight: 8 }} />
+                <Text style={s.inviteBtnText}>{loading ? 'Sending…' : 'Send Friend Request'}</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
 export const FriendsScreen = () => {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<any>();
-  const [modalVisible, setModalVisible] = useState(false);
+  const navigation = useNavigation();
+  const [showAdd, setShowAdd] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [friends, setFriends] = useState<Array<{ id: string; name: string; status: string; initial: string }>>([]);
 
-  const friends = [
-    { initial: 'S', name: 'Sarah', sessions: 38, level: 'B+', color: '#208B59' },
-    { initial: 'M', name: 'Mike', sessions: 52, level: 'A-', color: '#C18D37' },
-    { initial: 'J', name: 'Jin', sessions: 24, level: 'B', color: '#13284B' },
-    { initial: 'L', name: 'Lena', sessions: 12, level: 'C+', color: '#5B738B' },
-    { initial: 'R', name: 'Raj', sessions: 18, level: 'C+', color: '#E07A5F' }
-  ];
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setErrorText(null);
+        setLoading(true);
+        const rows = await listMyFriends();
+        const { data: userRes } = await supabase.auth.getUser();
+        const myId = userRes.user?.id;
+        const otherIds = rows
+          .map(r => (r.user_id === myId ? r.friend_user_id : r.user_id))
+          .filter(Boolean);
+
+        const { data: profiles, error } = await supabase
+          .from('profiles')
+          .select('id,display_name,email')
+          .in('id', otherIds);
+        if (error) throw error;
+        const map = new Map((profiles ?? []).map(p => [p.id, p]));
+
+        const mapped = rows.map(r => {
+          const otherId = r.user_id === myId ? r.friend_user_id : r.user_id;
+          const p = map.get(otherId);
+          const name = (p?.display_name || p?.email || 'Teammate') as string;
+          return {
+            id: r.id,
+            name,
+            status: r.status,
+            initial: name.slice(0, 1).toUpperCase(),
+          };
+        });
+
+        if (!mounted) return;
+        setFriends(mapped);
+      } catch (e: any) {
+        if (!mounted) return;
+        setErrorText(e?.message ?? 'Failed to load friends.');
+      } finally {
+        if (!mounted) return;
+        setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleInvite = async (email: string) => {
+    await sendFriendRequest(email);
+    // refresh
+    const rows = await listMyFriends();
+    const { data: userRes } = await supabase.auth.getUser();
+    const myId = userRes.user?.id;
+    const otherIds = rows.map(r => (r.user_id === myId ? r.friend_user_id : r.user_id));
+    const { data: profiles } = await supabase.from('profiles').select('id,display_name,email').in('id', otherIds);
+    const map = new Map((profiles ?? []).map(p => [p.id, p]));
+    setFriends(
+      rows.map(r => {
+        const otherId = r.user_id === myId ? r.friend_user_id : r.user_id;
+        const p = map.get(otherId);
+        const name = (p?.display_name || p?.email || 'Teammate') as string;
+        return { id: r.id, name, status: r.status, initial: name.slice(0, 1).toUpperCase() };
+      })
+    );
+  };
+
+  const hasFriends = friends.length > 0;
 
   return (
-    <View style={styles.container}>
-       <View style={[styles.topSection, { paddingTop: insets.top + 16 }]}>
-          <View style={styles.header}>
-            <View style={styles.headerLogoCircle}>
-              <Text style={styles.headerLogoText}>CF</Text>
-            </View>
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>CourtFund</Text>
-              <Text style={styles.headerSubtitle}>Personal Tracker</Text>
-            </View>
-            <TouchableOpacity style={styles.headerIconWrapper}><Bell color="#8A9BB3" size={20} /></TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.headerIconWrapper, { backgroundColor: '#208B59', marginLeft: 12 }]}
-              onPress={() => navigation.navigate('Profile')}
-            >
-              <User color="#FFF" size={20} />
-            </TouchableOpacity>
+    <View style={s.container}>
+      <View style={[s.header, { paddingTop: insets.top + 16 }]}>
+        <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
+          <ArrowLeft size={20} color={C.accent} />
+        </TouchableOpacity>
+        <Text style={s.headerTitle}>Friends</Text>
+        <TouchableOpacity style={s.addBtn} onPress={() => setShowAdd(true)}>
+          <UserPlus size={18} color={C.accent} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        <View style={s.searchSection}>
+          <View style={s.searchBar}>
+            <Search size={18} color={C.neutral} style={{ marginRight: 10 }} />
+            <TextInput
+              placeholder="Search friends..."
+              placeholderTextColor={C.neutral}
+              style={s.searchInput}
+            />
           </View>
-       </View>
+        </View>
 
-       <View style={styles.pageHeader}>
-         <Text style={styles.pageTitle}>Friends</Text>
-         <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
-           <UserPlus color="#FFF" size={16} style={{ marginRight: 6 }} />
-           <Text style={styles.addButtonText}>Add Friend</Text>
-         </TouchableOpacity>
-       </View>
+        <Text style={s.sectionTitle}>MY TEAMMATES</Text>
+        <View style={s.friendsList}>
+          {loading ? (
+            <View style={s.loadingRow}>
+              <ActivityIndicator color={C.accent} />
+              <Text style={s.loadingText}>Loading…</Text>
+            </View>
+          ) : errorText ? (
+            <View style={s.loadingRow}>
+              <Text style={s.errorText}>{errorText}</Text>
+            </View>
+          ) : !hasFriends ? (
+            <View style={s.loadingRow}>
+              <Text style={s.loadingText}>No friends yet. Invite someone.</Text>
+            </View>
+          ) : (
+            friends.map(f => (
+              <View key={f.id} style={s.friendRow}>
+                <View style={s.avatar}>
+                  <Text style={s.avatarText}>{f.initial}</Text>
+                  <View style={s.statusDot} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.friendName}>{f.name}</Text>
+                  <Text style={s.friendStatus}>{f.status}</Text>
+                </View>
+                <TouchableOpacity style={s.msgBtn} disabled>
+                  <Text style={s.msgBtnText}>Message</Text>
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+        </View>
+      </ScrollView>
 
-       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}>
-         {friends.map((f, i) => (
-           <FriendCard key={i} {...f} />
-         ))}
-       </ScrollView>
-
-       <Modal visible={modalVisible} transparent animationType="fade">
-         <View style={styles.modalOverlay}>
-           <View style={styles.modalContent}>
-             <View style={styles.modalHeader}>
-               <Text style={styles.modalTitle}>Add a Friend</Text>
-               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                 <X color="#5B738B" size={24} />
-               </TouchableOpacity>
-             </View>
-             
-             <View style={styles.inputContainer}>
-               <Text style={styles.searchIcon}>🔍</Text>
-               <TextInput 
-                 style={styles.textInput}
-                 placeholder="Enter friend's name..."
-                 placeholderTextColor="#8A9BB3"
-               />
-             </View>
-
-             <TouchableOpacity style={styles.submitButton} onPress={() => setModalVisible(false)}>
-               <Text style={styles.submitButtonText}>Add Friend</Text>
-             </TouchableOpacity>
-
-           </View>
-         </View>
-       </Modal>
+      <AddFriendModal visible={showAdd} onClose={() => setShowAdd(false)} onSend={handleInvite} />
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F0F2F5' },
-  topSection: { backgroundColor: '#13284B', paddingHorizontal: 20, paddingBottom: 20 },
-  header: { flexDirection: 'row', alignItems: 'center' },
-  headerLogoCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#3A2E22', justifyContent: 'center', alignItems: 'center', opacity: 0.8 },
-  headerLogoText: { color: '#DEA54B', fontWeight: 'bold', fontSize: 18 },
-  headerTextContainer: { flex: 1, marginLeft: 12 },
-  headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '700' },
-  headerSubtitle: { color: '#8A9BB3', fontSize: 13, marginTop: 2 },
-  headerIconWrapper: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
-  pageHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 20, marginTop: 24, marginBottom: 16 },
-  pageTitle: { fontSize: 20, fontWeight: 'bold', color: '#13284B' },
-  addButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#208B59', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
-  addButtonText: { color: '#FFF', fontWeight: '600', fontSize: 14 },
-  friendCard: { flexDirection: 'row', backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginBottom: 12, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8 },
-  avatar: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  avatarText: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
-  friendName: { fontSize: 16, fontWeight: '700', color: '#13284B', marginBottom: 4 },
-  friendStats: { fontSize: 13, color: '#5B738B' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContent: { width: '100%', backgroundColor: '#FFF', borderRadius: 24, padding: 24, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#13284B' },
-  inputContainer: { flexDirection: 'row', backgroundColor: '#F0F2F5', borderRadius: 16, height: 50, alignItems: 'center', paddingHorizontal: 16, marginBottom: 24 },
-  searchIcon: { fontSize: 16, marginRight: 12, color: '#8A9BB3' },
-  textInput: { flex: 1, fontSize: 15, color: '#13284B' },
-  submitButton: { backgroundColor: '#A2CBB6', paddingVertical: 16, borderRadius: 16, alignItems: 'center' }, // Light green
-  submitButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' }
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: C.bg },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 16 },
+  backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.card, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: C.border },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: C.text },
+  addBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.card, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: C.border },
+  searchSection: { paddingHorizontal: 20, marginBottom: 20 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 14, paddingHorizontal: 16, height: 50, borderWidth: 1, borderColor: C.border },
+  searchInput: { flex: 1, color: C.text, fontSize: 15 },
+  sectionTitle: { fontSize: 11, fontWeight: '700', color: C.neutral, letterSpacing: 1.2, marginHorizontal: 20, marginBottom: 12 },
+  friendsList: { backgroundColor: C.card, marginHorizontal: 20, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: C.border },
+  friendRow: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: C.border },
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.accentMuted, justifyContent: 'center', alignItems: 'center', marginRight: 14, borderWidth: 1, borderColor: C.accentBorder },
+  avatarText: { color: C.accent, fontSize: 16, fontWeight: '700' },
+  statusDot: { position: 'absolute', bottom: 2, right: 2, width: 10, height: 10, borderRadius: 5, backgroundColor: C.neutral, borderWidth: 2, borderColor: C.card },
+  friendName: { fontSize: 15, fontWeight: '600', color: C.text, marginBottom: 2 },
+  friendStatus: { fontSize: 12, color: C.neutral },
+  msgBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: 'rgba(148,163,184,0.1)' },
+  msgBtnText: { color: C.text, fontSize: 12, fontWeight: '600' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, borderTopWidth: 1, borderColor: C.border },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: C.text },
+  modalLabel: { fontSize: 10, fontWeight: '700', color: C.neutral, marginBottom: 8, letterSpacing: 1 },
+  modalInput: { backgroundColor: C.bg, borderRadius: 12, paddingHorizontal: 16, height: 50, fontSize: 15, color: C.text, borderWidth: 1, borderColor: C.border, marginBottom: 20 },
+  modalError: { color: '#F87171', fontSize: 12, fontWeight: '700', marginTop: -10, marginBottom: 12 },
+  inviteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: C.accent, paddingVertical: 15, borderRadius: 30 },
+  inviteBtnText: { color: C.accentBg, fontSize: 15, fontWeight: '800' },
+  sentState: { alignItems: 'center', paddingVertical: 20 },
+  sentCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: C.accentMuted, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  sentTitle: { fontSize: 20, fontWeight: '800', color: C.text, marginBottom: 8 },
+  sentDesc: { fontSize: 14, color: C.neutral, textAlign: 'center' },
+  loadingRow: { padding: 18, alignItems: 'center', justifyContent: 'center' },
+  loadingText: { color: C.neutral, fontSize: 13, marginTop: 10 },
+  errorText: { color: '#F87171', fontWeight: '700', fontSize: 13, textAlign: 'center' },
 });

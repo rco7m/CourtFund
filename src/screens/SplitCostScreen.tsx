@@ -1,135 +1,105 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Dimensions } from 'react-native';
-import { Bell, User, Check } from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { Check, AlertTriangle } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { AppHeader } from '../components/AppHeader';
+
+const C = {
+  bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
+  neutral: '#94A3B8', text: '#E2E8F0', border: 'rgba(148,163,184,0.12)',
+  accentMuted: 'rgba(204,255,0,0.08)', accentBorder: 'rgba(204,255,0,0.25)',
+};
 
 const PlayerSplitRow = ({ initial, name, amount, status, color }: any) => (
-  <View style={styles.playerSplitRow}>
-    <View style={styles.playerInfoLeft}>
-      <View style={[styles.playerObjAvatar, { backgroundColor: color || '#13284B' }]}>
-        <Text style={styles.playerObjAvatarText}>{initial}</Text>
-      </View>
-      <View>
-        <Text style={styles.playerObjName}>{name}</Text>
-        <Text style={styles.playerObjAmount}>{amount}</Text>
-      </View>
+  <View style={s.playerRow}>
+    <View style={[s.avatar, { backgroundColor: color }]}>
+      <Text style={s.avatarText}>{initial}</Text>
+    </View>
+    <View style={{ flex: 1 }}>
+      <Text style={s.playerName}>{name}</Text>
+      <Text style={s.playerAmount}>{amount}</Text>
     </View>
     {status === 'Paid' ? (
-      <View style={styles.paidStatus}>
-        <Check color="#208B59" size={16} />
-        <Text style={styles.paidText}>Paid</Text>
+      <View style={s.paidBadge}>
+        <Check size={12} color={C.accent} style={{ marginRight: 4 }} />
+        <Text style={s.paidText}>Paid</Text>
       </View>
     ) : (
-      <TouchableOpacity style={styles.remindButton}>
-        <Text style={styles.remindText}>Remind</Text>
+      <TouchableOpacity style={s.remindBtn}>
+        <AlertTriangle size={12} color={C.accentBg} style={{ marginRight: 4 }} />
+        <Text style={s.remindText}>Remind</Text>
       </TouchableOpacity>
     )}
   </View>
 );
 
 const SplitCard = ({ title, total, perPlayer, players }: any) => (
-  <View style={styles.splitCard}>
-    <View style={styles.splitCardHeader}>
-      <Text style={styles.splitCardTitle}>{title}</Text>
-      <Text style={styles.splitCardSub}>Total: {total} → <Text style={{ color: '#208B59', fontWeight: 'bold' }}>{perPlayer}</Text> per player</Text>
+  <View style={s.splitCard}>
+    <View style={s.splitHeader}>
+      <Text style={s.splitTitle}>{title}</Text>
+      <Text style={s.splitSub}>
+        Total: {total} →{' '}
+        <Text style={{ color: C.accent, fontWeight: '700' }}>{perPlayer}</Text> per player
+      </Text>
     </View>
-    <View style={styles.splitCardContent}>
-      {players.map((p: any, i: number) => (
-        <PlayerSplitRow key={i} {...p} />
-      ))}
-    </View>
+    {players.map((p: any, i: number) => (
+      <PlayerSplitRow key={i} {...p} />
+    ))}
   </View>
 );
 
+const COLORS = ['#6366F1','#EC4899','#14B8A6','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#F97316'];
+
 export const SplitCostScreen = () => {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<any>();
 
   const yonexPlayers = [
-    { initial: 'A', name: 'Alex', amount: '$4.38', status: 'Paid', color: '#13284B' },
-    { initial: 'S', name: 'Sarah', amount: '$4.38', status: 'Paid', color: '#13284B' },
-    { initial: 'M', name: 'Mike', amount: '$4.38', status: 'Remind', color: '#13284B' },
-    { initial: 'J', name: 'Jin', amount: '$4.38', status: 'Paid', color: '#13284B' },
-    { initial: 'P', name: 'Priya', amount: '$4.38', status: 'Remind', color: '#13284B' },
-    { initial: 'T', name: 'Tom', amount: '$4.38', status: 'Paid', color: '#13284B' },
-    { initial: 'L', name: 'Lena', amount: '$4.38', status: 'Paid', color: '#13284B' },
-    { initial: 'R', name: 'Raj', amount: '$4.38', status: 'Remind', color: '#13284B' },
+    { initial: 'A', name: 'Alex', amount: '$4.38', status: 'Paid', color: COLORS[0] },
+    { initial: 'S', name: 'Sarah', amount: '$4.38', status: 'Paid', color: COLORS[1] },
+    { initial: 'M', name: 'Mike', amount: '$4.38', status: 'Remind', color: COLORS[2] },
+    { initial: 'J', name: 'Jin', amount: '$4.38', status: 'Paid', color: COLORS[3] },
+    { initial: 'P', name: 'Priya', amount: '$4.38', status: 'Remind', color: COLORS[4] },
+    { initial: 'T', name: 'Tom', amount: '$4.38', status: 'Paid', color: COLORS[5] },
+    { initial: 'L', name: 'Lena', amount: '$4.38', status: 'Paid', color: COLORS[6] },
+    { initial: 'R', name: 'Raj', amount: '$4.38', status: 'Remind', color: COLORS[7] },
   ];
 
   const courtPlayers = [
-    { initial: 'A', name: 'Alex', amount: '$10.00', status: 'Paid', color: '#13284B' },
-    { initial: 'S', name: 'Sarah', amount: '$10.00', status: 'Paid', color: '#13284B' },
-    { initial: 'M', name: 'Mike', amount: '$10.00', status: 'Paid', color: '#13284B' },
-    { initial: 'J', name: 'Jin', amount: '$10.00', status: 'Remind', color: '#13284B' },
+    { initial: 'A', name: 'Alex', amount: '$10.00', status: 'Paid', color: COLORS[0] },
+    { initial: 'S', name: 'Sarah', amount: '$10.00', status: 'Paid', color: COLORS[1] },
+    { initial: 'M', name: 'Mike', amount: '$10.00', status: 'Paid', color: COLORS[2] },
+    { initial: 'J', name: 'Jin', amount: '$10.00', status: 'Remind', color: COLORS[3] },
   ];
 
   return (
-    <View style={styles.container}>
-       <View style={[styles.topSection, { paddingTop: insets.top + 16 }]}>
-          <View style={styles.header}>
-            <View style={styles.headerLogoCircle}>
-              <Text style={styles.headerLogoText}>CF</Text>
-            </View>
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>CourtFund</Text>
-              <Text style={styles.headerSubtitle}>Personal Tracker</Text>
-            </View>
-            <TouchableOpacity style={styles.headerIconWrapper}><Bell color="#8A9BB3" size={20} /></TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.headerIconWrapper, { backgroundColor: '#208B59', marginLeft: 12 }]}
-              onPress={() => navigation.navigate('Profile')}
-            >
-              <User color="#FFF" size={20} />
-            </TouchableOpacity>
-          </View>
-       </View>
+    <View style={s.container}>
+      <View style={{ paddingTop: insets.top + 10 }}>
+        <AppHeader />
+      </View>
 
-       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-         <Text style={styles.pageTitle}>Cost Splitting</Text>
-         
-         <SplitCard 
-           title="Yonex AS-30 Shuttle Tube"
-           total="$35.00"
-           perPlayer="$4.38"
-           players={yonexPlayers}
-         />
-
-         <SplitCard 
-           title="Court 1 — Thursday 6 PM"
-           total="$40.00"
-           perPlayer="$10.00"
-           players={courtPlayers}
-         />
-       </ScrollView>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
+        <Text style={s.pageTitle}>Cost Splitting</Text>
+        <SplitCard title="Yonex AS-30 Shuttle Tube" total="$35.00" perPlayer="$4.38" players={yonexPlayers} />
+        <SplitCard title="Court 1 — Thursday 6 PM" total="$40.00" perPlayer="$10.00" players={courtPlayers} />
+      </ScrollView>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F0F2F5' },
-  topSection: { backgroundColor: '#13284B', paddingHorizontal: 20, paddingBottom: 20 },
-  header: { flexDirection: 'row', alignItems: 'center' },
-  headerLogoCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#3A2E22', justifyContent: 'center', alignItems: 'center', opacity: 0.8 }, // From image logo seems a bit dim
-  headerLogoText: { color: '#DEA54B', fontWeight: 'bold', fontSize: 18 },
-  headerTextContainer: { flex: 1, marginLeft: 12 },
-  headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '700' },
-  headerSubtitle: { color: '#8A9BB3', fontSize: 13, marginTop: 2 },
-  headerIconWrapper: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
-  pageTitle: { fontSize: 20, fontWeight: 'bold', color: '#13284B', marginHorizontal: 20, marginTop: 24, marginBottom: 16 },
-  splitCard: { backgroundColor: '#FFF', marginHorizontal: 20, borderRadius: 24, marginBottom: 24, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, overflow: 'hidden' },
-  splitCardHeader: { padding: 20, borderBottomWidth: 1, borderBottomColor: '#F0F2F5' },
-  splitCardTitle: { fontSize: 16, fontWeight: '700', color: '#13284B', marginBottom: 4 },
-  splitCardSub: { fontSize: 14, color: '#5B738B' },
-  splitCardContent: { paddingHorizontal: 20 },
-  playerSplitRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F0F2F5' },
-  playerInfoLeft: { flexDirection: 'row', alignItems: 'center' },
-  playerObjAvatar: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  playerObjAvatarText: { color: '#FFF', fontWeight: 'bold', fontSize: 15 },
-  playerObjName: { fontSize: 15, fontWeight: '500', color: '#13284B', marginBottom: 2 },
-  playerObjAmount: { fontSize: 13, color: '#8A9BB3' },
-  paidStatus: { flexDirection: 'row', alignItems: 'center' },
-  paidText: { color: '#208B59', fontWeight: '600', fontSize: 14, marginLeft: 4 },
-  remindButton: { backgroundColor: '#DEA54B', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16 },
-  remindText: { color: '#13284B', fontWeight: '600', fontSize: 13 },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: C.bg },
+  pageTitle: { fontSize: 24, fontWeight: '800', color: C.text, marginHorizontal: 20, marginBottom: 16 },
+  splitCard: { backgroundColor: C.card, marginHorizontal: 20, borderRadius: 18, marginBottom: 20, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
+  splitHeader: { padding: 18, borderBottomWidth: 1, borderBottomColor: C.border },
+  splitTitle: { fontSize: 15, fontWeight: '700', color: C.text, marginBottom: 4 },
+  splitSub: { fontSize: 13, color: C.neutral },
+  playerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: C.border },
+  avatar: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  avatarText: { color: '#FFF', fontWeight: '700', fontSize: 13 },
+  playerName: { fontSize: 14, fontWeight: '600', color: C.text, marginBottom: 2 },
+  playerAmount: { fontSize: 12, color: C.neutral },
+  paidBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.accentMuted, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: C.accentBorder },
+  paidText: { color: C.accent, fontWeight: '700', fontSize: 12 },
+  remindBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.accent, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+  remindText: { color: C.accentBg, fontWeight: '700', fontSize: 12 },
 });
