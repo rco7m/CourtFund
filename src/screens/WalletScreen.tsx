@@ -1,13 +1,13 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Modal, TextInput, Dimensions, KeyboardAvoidingView, Platform, Animated,
+  Modal, TextInput, Dimensions, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop, Line, Text as SvgText } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import {
-  Plus, ArrowRight, Layers, ShoppingBag, Target, CreditCard, ArrowLeft,
+  Plus, Layers, ShoppingBag, Target, CreditCard, ArrowLeft,
 } from 'lucide-react-native';
 import { AppHeader } from '../components/AppHeader';
 import { createExpense, listMyExpenses } from '../data/expenses';
@@ -308,6 +308,12 @@ export const WalletScreen = () => {
   useEffect(() => {
     load();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      load();
+    }, [])
+  );
 
   const totalOutflow = useMemo(() => (expenses ?? []).reduce((acc, e) => acc + (Number(e.amount) || 0), 0), [expenses]);
   const monthOutflow = useMemo(() => {

@@ -9,12 +9,18 @@ export type ScheduleEventRow = {
   end_time: string;
   status: 'pending' | 'confirmed' | 'declined';
   details: string | null;
+  sport?: string | null;
+  venue_name?: string | null;
+  venue_address?: string | null;
+  booking_url?: string | null;
+  estimated_cost?: number | null;
+  player_count?: number | null;
 };
 
 export async function listScheduleForRange(fromIso: string, toIso: string) {
   const { data, error } = await supabase
     .from('schedule_events')
-    .select('id,user_id,title,tag,start_time,end_time,status,details')
+    .select('id,user_id,title,tag,start_time,end_time,status,details,sport,venue_name,venue_address,booking_url,estimated_cost,player_count')
     .gte('start_time', fromIso)
     .lt('start_time', toIso)
     .order('start_time', { ascending: true });
@@ -49,9 +55,8 @@ export async function createScheduleEvent(input: {
       details: input.details ?? null,
       status: 'pending',
     })
-    .select('id,user_id,title,tag,start_time,end_time,status,details')
+    .select('id,user_id,title,tag,start_time,end_time,status,details,sport,venue_name,venue_address,booking_url,estimated_cost,player_count')
     .single();
   if (error) throw error;
   return data as ScheduleEventRow;
 }
-

@@ -34,7 +34,9 @@
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string>CourtFund uses your location to find nearby sports venues and booking options.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>CourtFund uses your location to find nearby sports venues and booking options.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

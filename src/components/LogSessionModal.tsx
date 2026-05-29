@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { Star } from 'lucide-react-native';
 
 interface LogSessionModalProps {
@@ -269,14 +269,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   primaryButton: {
-    backgroundColor: '#A2CBB6', // Exact match light green from image
+    backgroundColor: '#208B59',
     width: '100%',
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
   },
   primaryButtonHalf: {
-    backgroundColor: '#A2CBB6',
+    backgroundColor: '#208B59',
     width: '48%',
     paddingVertical: 16,
     borderRadius: 16,

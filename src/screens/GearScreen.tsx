@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
-import { Package, Sparkles, Check, AlertTriangle, ClipboardList } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { Package, AlertTriangle, ClipboardList } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { LogGearModal } from '../components/LogGearModal';
 import { AppHeader } from '../components/AppHeader';
 import { createGearItem, listMyGear } from '../data/gear';
@@ -26,9 +26,7 @@ const PurchaseItem = ({ name, date, price, isLast }: any) => (
 
 export const GearScreen = () => {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<any>();
   const [modalVisible, setModalVisible] = useState(false);
-  const [alertDismissed, setAlertDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [gearItems, setGearItems] = useState<any[]>([]);
@@ -50,6 +48,12 @@ export const GearScreen = () => {
     load();
   }, []);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      load();
+    }, [])
+  );
+
   return (
     <View style={s.container}>
       <View style={{ paddingTop: insets.top + 10 }}>
@@ -64,27 +68,6 @@ export const GearScreen = () => {
             <Text style={s.logBtnText}>Log Purchase</Text>
           </TouchableOpacity>
         </View>
-
-        {/* AI Alert */}
-        {!alertDismissed && (
-        <View style={s.aiAlertCard}>
-          <View style={s.aiAlertIconBox}>
-            <Sparkles size={16} color={C.accent} />
-          </View>
-          <View style={s.aiAlertContent}>
-            <Text style={s.aiAlertTitle}>AI Order Recommendation</Text>
-            <Text style={s.aiAlertText}>
-              Order <Text style={{ fontWeight: '700', color: C.text }}>6 shuttle tubes</Text> and{' '}
-              <Text style={{ fontWeight: '700', color: C.text }}>8 grip rolls</Text> by{' '}
-              <Text style={{ fontWeight: '700', color: C.text }}>Thursday</Text> to maintain inventory flow.
-            </Text>
-          </View>
-          <TouchableOpacity style={s.aiAlertButton} onPress={() => setAlertDismissed(true)}>
-            <Check size={13} color={C.accentBg} style={{ marginRight: 4 }} />
-            <Text style={s.aiAlertButtonText}>Done</Text>
-          </TouchableOpacity>
-        </View>
-        )}
 
         {/* Inventory Grid */}
         <View style={s.gridContainer}>
@@ -166,13 +149,6 @@ const s = StyleSheet.create({
   pageTitle: { fontSize: 24, fontWeight: '800', color: C.text },
   logBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.accent, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
   logBtnText: { color: C.accentBg, fontWeight: '700', fontSize: 13 },
-  aiAlertCard: { flexDirection: 'row', backgroundColor: 'rgba(204,255,0,0.05)', marginHorizontal: 20, borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: C.accentBorder, alignItems: 'center' },
-  aiAlertIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.accentMuted, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
-  aiAlertContent: { flex: 1 },
-  aiAlertTitle: { color: C.accent, fontSize: 13, fontWeight: '700', marginBottom: 4 },
-  aiAlertText: { color: C.neutral, fontSize: 12, lineHeight: 18 },
-  aiAlertButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.accent, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, marginLeft: 12 },
-  aiAlertButtonText: { color: C.accentBg, fontSize: 11, fontWeight: '800' },
   gridContainer: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, justifyContent: 'space-between', marginBottom: 20 },
   gearCard: { width: '47%', backgroundColor: C.card, borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: C.border },
   gearHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },

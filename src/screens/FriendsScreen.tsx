@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator } from 'react-native';
-import { Bell, User, UserPlus, X, Check, Search, ArrowLeft } from 'lucide-react-native';
+import { UserPlus, X, Check, Search, ArrowLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { listMyFriends, sendFriendRequest } from '../data/friends';
+import { acceptFriendRequest, declineFriendRequest, findProfileById, listMyFriends, sendFriendRequestById } from '../data/friends';
 import { supabase } from '../lib/supabase';
 
 const C = {
@@ -13,21 +13,41 @@ const C = {
 };
 
 const AddFriendModal = ({ visible, onClose, onSend }: any) => {
-  const [email, setEmail] = useState('');
+  const [friendId, setFriendId] = useState('');
   const [sent, setSent] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [found, setFound] = useState<{ id: string; name: string } | null>(null);
+
+  const handleSearch = async () => {
+    setErrorText(null);
+    const id = friendId.trim();
+    if (!id) return;
+    try {
+      setSearching(true);
+      setFound(null);
+      const p = await findProfileById(id);
+      const name = (p.display_name || p.email || 'Player') as string;
+      setFound({ id: p.id, name });
+    } catch (e: any) {
+      setErrorText(e?.message ?? 'No user found with that ID.');
+    } finally {
+      setSearching(false);
+    }
+  };
 
   const handleSend = async () => {
     setErrorText(null);
-    if (!email.trim()) return;
+    if (!found) return;
     try {
       setLoading(true);
-      await onSend(email.trim());
+      await onSend(found.id);
       setSent(true);
       setTimeout(() => {
         setSent(false);
-        setEmail('');
+        setFriendId('');
+        setFound(null);
         onClose();
       }, 1200);
     } catch (e: any) {
@@ -49,21 +69,33 @@ const AddFriendModal = ({ visible, onClose, onSend }: any) => {
             <View style={s.sentState}>
               <View style={s.sentCircle}><Check size={30} color={C.accent} /></View>
               <Text style={s.sentTitle}>Request Sent!</Text>
-              <Text style={s.sentDesc}>We've sent an invitation to {email}</Text>
+              <Text style={s.sentDesc}>Friend request sent.</Text>
             </View>
           ) : (
             <>
-              <Text style={s.modalLabel}>INVITE BY EMAIL</Text>
+              <Text style={s.modalLabel}>INVITE BY ID</Text>
               <TextInput
                 style={s.modalInput}
-                placeholder="teammate@example.com"
+                placeholder="Paste teammate ID"
                 placeholderTextColor={C.neutral}
-                value={email}
-                onChangeText={setEmail}
+                value={friendId}
+                onChangeText={setFriendId}
                 autoCapitalize="none"
               />
+              <TouchableOpacity style={s.searchBtn} onPress={handleSearch} disabled={searching || !friendId.trim()}>
+                {searching ? <ActivityIndicator color={C.accentBg} /> : <Search size={18} color={C.accentBg} style={{ marginRight: 8 }} />}
+                <Text style={s.inviteBtnText}>Search</Text>
+              </TouchableOpacity>
+
+              {found ? (
+                <View style={s.foundCard}>
+                  <Text style={s.foundTitle}>{found.name}</Text>
+                  <Text style={s.foundSub}>{found.id}</Text>
+                </View>
+              ) : null}
+
               {errorText ? <Text style={s.modalError}>{errorText}</Text> : null}
-              <TouchableOpacity style={s.inviteBtn} onPress={handleSend} disabled={loading}>
+              <TouchableOpacity style={s.inviteBtn} onPress={handleSend} disabled={loading || !found}>
                 <UserPlus size={18} color={C.accentBg} style={{ marginRight: 8 }} />
                 <Text style={s.inviteBtnText}>{loading ? 'Sending…' : 'Send Friend Request'}</Text>
               </TouchableOpacity>
@@ -81,75 +113,81 @@ export const FriendsScreen = () => {
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState<string | null>(null);
-  const [friends, setFriends] = useState<Array<{ id: string; name: string; status: string; initial: string }>>([]);
+  const [teammates, setTeammates] = useState<Array<{ id: string; name: string; status: string; initial: string }>>([]);
+  const [incoming, setIncoming] = useState<Array<{ id: string; name: string; initial: string; fromUserId: string }>>([]);
+  const [outgoing, setOutgoing] = useState<Array<{ id: string; name: string; initial: string; toUserId: string }>>([]);
+
+  const load = async () => {
+    setErrorText(null);
+    setLoading(true);
+    try {
+      const rows = await listMyFriends();
+      const { data: userRes } = await supabase.auth.getUser();
+      const uid = userRes.user?.id ?? null;
+      if (!uid) {
+        setTeammates([]);
+        setIncoming([]);
+        setOutgoing([]);
+        return;
+      }
+
+      const otherIds = rows
+        .map(r => (r.user_id === uid ? r.friend_user_id : r.user_id))
+        .filter(Boolean);
+
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id,display_name,email')
+        .in('id', otherIds.length ? otherIds : ['00000000-0000-0000-0000-000000000000']);
+      if (error) throw error;
+      const map = new Map((profiles ?? []).map(p => [p.id, p]));
+
+      const accepted = rows.filter(r => r.status === 'accepted');
+      const pendingIncoming = rows.filter(r => r.status === 'pending' && r.friend_user_id === uid);
+      const pendingOutgoing = rows.filter(r => r.status === 'pending' && r.user_id === uid);
+
+      setTeammates(accepted.map(r => {
+        const otherId = r.user_id === uid ? r.friend_user_id : r.user_id;
+        const p = map.get(otherId);
+        const name = (p?.display_name || p?.email || 'Teammate') as string;
+        return { id: r.id, name, status: 'accepted', initial: name.slice(0, 1).toUpperCase() };
+      }));
+
+      setIncoming(pendingIncoming.map(r => {
+        const fromId = r.user_id;
+        const p = map.get(fromId);
+        const name = (p?.display_name || p?.email || 'Player') as string;
+        return { id: r.id, fromUserId: fromId, name, initial: name.slice(0, 1).toUpperCase() };
+      }));
+
+      setOutgoing(pendingOutgoing.map(r => {
+        const toId = r.friend_user_id;
+        const p = map.get(toId);
+        const name = (p?.display_name || p?.email || 'Player') as string;
+        return { id: r.id, toUserId: toId, name, initial: name.slice(0, 1).toUpperCase() };
+      }));
+    } catch (e: any) {
+      setErrorText(e?.message ?? 'Failed to load friends.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      try {
-        setErrorText(null);
-        setLoading(true);
-        const rows = await listMyFriends();
-        const { data: userRes } = await supabase.auth.getUser();
-        const myId = userRes.user?.id;
-        const otherIds = rows
-          .map(r => (r.user_id === myId ? r.friend_user_id : r.user_id))
-          .filter(Boolean);
-
-        const { data: profiles, error } = await supabase
-          .from('profiles')
-          .select('id,display_name,email')
-          .in('id', otherIds);
-        if (error) throw error;
-        const map = new Map((profiles ?? []).map(p => [p.id, p]));
-
-        const mapped = rows.map(r => {
-          const otherId = r.user_id === myId ? r.friend_user_id : r.user_id;
-          const p = map.get(otherId);
-          const name = (p?.display_name || p?.email || 'Teammate') as string;
-          return {
-            id: r.id,
-            name,
-            status: r.status,
-            initial: name.slice(0, 1).toUpperCase(),
-          };
-        });
-
-        if (!mounted) return;
-        setFriends(mapped);
-      } catch (e: any) {
-        if (!mounted) return;
-        setErrorText(e?.message ?? 'Failed to load friends.');
-      } finally {
-        if (!mounted) return;
-        setLoading(false);
-      }
+      if (!mounted) return;
+      await load();
     })();
     return () => {
       mounted = false;
     };
   }, []);
 
-  const handleInvite = async (email: string) => {
-    await sendFriendRequest(email);
-    // refresh
-    const rows = await listMyFriends();
-    const { data: userRes } = await supabase.auth.getUser();
-    const myId = userRes.user?.id;
-    const otherIds = rows.map(r => (r.user_id === myId ? r.friend_user_id : r.user_id));
-    const { data: profiles } = await supabase.from('profiles').select('id,display_name,email').in('id', otherIds);
-    const map = new Map((profiles ?? []).map(p => [p.id, p]));
-    setFriends(
-      rows.map(r => {
-        const otherId = r.user_id === myId ? r.friend_user_id : r.user_id;
-        const p = map.get(otherId);
-        const name = (p?.display_name || p?.email || 'Teammate') as string;
-        return { id: r.id, name, status: r.status, initial: name.slice(0, 1).toUpperCase() };
-      })
-    );
+  const handleInvite = async (friendUserId: string) => {
+    await sendFriendRequestById(friendUserId);
+    await load();
   };
-
-  const hasFriends = friends.length > 0;
 
   return (
     <View style={s.container}>
@@ -168,12 +206,69 @@ export const FriendsScreen = () => {
           <View style={s.searchBar}>
             <Search size={18} color={C.neutral} style={{ marginRight: 10 }} />
             <TextInput
-              placeholder="Search friends..."
+              placeholder="Search teammates..."
               placeholderTextColor={C.neutral}
               style={s.searchInput}
             />
           </View>
         </View>
+
+        {incoming.length > 0 ? <Text style={s.sectionTitle}>FRIEND REQUESTS</Text> : null}
+        {incoming.length > 0 ? (
+          <View style={s.friendsList}>
+            {incoming.map(req => (
+              <View key={req.id} style={s.friendRow}>
+                <View style={s.avatar}>
+                  <Text style={s.avatarText}>{req.initial}</Text>
+                  <View style={s.statusDot} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.friendName}>{req.name}</Text>
+                  <Text style={s.friendStatus}>Pending</Text>
+                </View>
+                <TouchableOpacity
+                  style={[s.msgBtn, { backgroundColor: C.accent }]}
+                  onPress={async () => {
+                    await acceptFriendRequest(req.id);
+                    await load();
+                  }}
+                >
+                  <Text style={[s.msgBtnText, { color: C.accentBg }]}>Accept</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.msgBtn, { marginLeft: 8 }]}
+                  onPress={async () => {
+                    await declineFriendRequest(req.id);
+                    await load();
+                  }}
+                >
+                  <Text style={s.msgBtnText}>Decline</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {outgoing.length > 0 ? <Text style={s.sectionTitle}>SENT REQUESTS</Text> : null}
+        {outgoing.length > 0 ? (
+          <View style={s.friendsList}>
+            {outgoing.map(req => (
+              <View key={req.id} style={s.friendRow}>
+                <View style={s.avatar}>
+                  <Text style={s.avatarText}>{req.initial}</Text>
+                  <View style={s.statusDot} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.friendName}>{req.name}</Text>
+                  <Text style={s.friendStatus}>Pending</Text>
+                </View>
+                <View style={s.pendingBadge}>
+                  <Text style={s.pendingText}>Sent</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         <Text style={s.sectionTitle}>MY TEAMMATES</Text>
         <View style={s.friendsList}>
@@ -186,12 +281,12 @@ export const FriendsScreen = () => {
             <View style={s.loadingRow}>
               <Text style={s.errorText}>{errorText}</Text>
             </View>
-          ) : !hasFriends ? (
+          ) : teammates.length === 0 ? (
             <View style={s.loadingRow}>
-              <Text style={s.loadingText}>No friends yet. Invite someone.</Text>
+              <Text style={s.loadingText}>No teammates yet. Add someone by ID.</Text>
             </View>
           ) : (
-            friends.map(f => (
+            teammates.map(f => (
               <View key={f.id} style={s.friendRow}>
                 <View style={s.avatar}>
                   <Text style={s.avatarText}>{f.initial}</Text>
@@ -241,8 +336,14 @@ const s = StyleSheet.create({
   modalLabel: { fontSize: 10, fontWeight: '700', color: C.neutral, marginBottom: 8, letterSpacing: 1 },
   modalInput: { backgroundColor: C.bg, borderRadius: 12, paddingHorizontal: 16, height: 50, fontSize: 15, color: C.text, borderWidth: 1, borderColor: C.border, marginBottom: 20 },
   modalError: { color: '#F87171', fontSize: 12, fontWeight: '700', marginTop: -10, marginBottom: 12 },
+  searchBtn: { marginTop: -8, marginBottom: 12, backgroundColor: C.accent, borderRadius: 14, height: 46, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
+  foundCard: { marginBottom: 12, backgroundColor: C.bg, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: C.border },
+  foundTitle: { color: C.text, fontWeight: '800', marginBottom: 4 },
+  foundSub: { color: C.neutral, fontSize: 11 },
   inviteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: C.accent, paddingVertical: 15, borderRadius: 30 },
   inviteBtnText: { color: C.accentBg, fontSize: 15, fontWeight: '800' },
+  pendingBadge: { backgroundColor: C.accentMuted, borderWidth: 1, borderColor: C.accentBorder, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14 },
+  pendingText: { color: C.accent, fontWeight: '800', fontSize: 12 },
   sentState: { alignItems: 'center', paddingVertical: 20 },
   sentCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: C.accentMuted, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
   sentTitle: { fontSize: 20, fontWeight: '800', color: C.text, marginBottom: 8 },

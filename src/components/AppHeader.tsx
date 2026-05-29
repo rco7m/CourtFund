@@ -1,8 +1,9 @@
 // Shared header component used across all main screens
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Image } from 'react-native';
 import { Bell, X, User } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import { listMyNotifications } from '../data/notifications';
 
 const C = {
   bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
@@ -10,33 +11,42 @@ const C = {
   accentMuted: 'rgba(204,255,0,0.08)', accentBorder: 'rgba(204,255,0,0.25)',
 };
 
-const NOTIFICATIONS = [
-  { id: 1, icon: '🏸', title: 'Session Reminder', desc: 'Badminton tonight at 6 PM, Court 1.', time: '2h ago' },
-  { id: 2, icon: '💰', title: 'Cost Split Request', desc: 'Mike sent you a split request for $10.', time: '5h ago' },
-  { id: 3, icon: '📦', title: 'Shuttle Alert', desc: 'Stock running low — order within 7 days.', time: '1d ago' },
-];
-
 export const AppHeader = () => {
   const navigation = useNavigation<any>();
   const [showNotif, setShowNotif] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    listMyNotifications(5)
+      .then(rows => {
+        if (mounted) setNotifications(rows);
+      })
+      .catch(() => {
+        if (mounted) setNotifications([]);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <>
       <View style={s.header}>
         <View style={s.logoRow}>
           <Image source={require('../assets/logo.png')} style={s.logoImg} resizeMode="contain" />
-          <View style={{ marginLeft: 10 }}>
+          <View style={s.logoTextWrap}>
             <Text style={s.headerTitle}>CourtFund</Text>
             <Text style={s.headerSub}>Personal Tracker</Text>
           </View>
         </View>
-        <View style={{ flex: 1 }} />
+        <View style={s.flexSpacer} />
         <TouchableOpacity style={s.iconBtn} onPress={() => setShowNotif(true)}>
           <Bell size={18} color={C.neutral} />
           <View style={s.notifDot} />
         </TouchableOpacity>
         <TouchableOpacity
-          style={[s.iconBtn, s.iconBtnAccent, { marginLeft: 10 }]}
+          style={s.profileBtn}
           onPress={() => navigation.navigate('Profile')}
         >
           <User size={18} color={C.accentBg} />
@@ -52,10 +62,12 @@ export const AppHeader = () => {
                 <X size={18} color={C.neutral} />
               </TouchableOpacity>
             </View>
-            {NOTIFICATIONS.map(n => (
+            {notifications.length === 0 ? (
+              <Text style={s.notifEmpty}>No notifications yet.</Text>
+            ) : notifications.map(n => (
               <View key={n.id} style={s.notifItem}>
                 <Text style={s.notifIcon}>{n.icon}</Text>
-                <View style={{ flex: 1 }}>
+                <View style={s.notifBody}>
                   <Text style={s.notifItemTitle}>{n.title}</Text>
                   <Text style={s.notifItemDesc}>{n.desc}</Text>
                 </View>
@@ -73,10 +85,13 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16 },
   logoRow: { flexDirection: 'row', alignItems: 'center' },
   logoImg: { width: 36, height: 36, borderRadius: 8 },
+  logoTextWrap: { marginLeft: 10 },
+  flexSpacer: { flex: 1 },
   headerTitle: { color: C.text, fontSize: 15, fontWeight: '700' },
   headerSub: { color: C.neutral, fontSize: 11, marginTop: 1 },
   iconBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.card, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: C.border },
   iconBtnAccent: { backgroundColor: C.accent, borderColor: C.accent },
+  profileBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.accent, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: C.accent, marginLeft: 10 },
   notifDot: { position: 'absolute', top: 7, right: 7, width: 7, height: 7, borderRadius: 4, backgroundColor: C.accent, borderWidth: 1.5, borderColor: C.card },
   notifOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-start', paddingTop: 100, paddingHorizontal: 16 },
   notifPanel: { backgroundColor: C.card, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: C.border },
@@ -84,7 +99,9 @@ const s = StyleSheet.create({
   notifTitle: { color: C.text, fontSize: 16, fontWeight: '700' },
   notifItem: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderTopWidth: 1, borderTopColor: C.border },
   notifIcon: { fontSize: 22, marginRight: 12 },
+  notifBody: { flex: 1 },
   notifItemTitle: { color: C.text, fontSize: 13, fontWeight: '600', marginBottom: 2 },
   notifItemDesc: { color: C.neutral, fontSize: 12, lineHeight: 17 },
   notifTime: { color: C.neutral, fontSize: 11, marginLeft: 8 },
+  notifEmpty: { color: C.neutral, fontSize: 13, paddingVertical: 8 },
 });

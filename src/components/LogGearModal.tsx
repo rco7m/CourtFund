@@ -1,20 +1,13 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, Switch } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, ActivityIndicator } from 'react-native';
 import { X, Package, Check, Users } from 'lucide-react-native';
+import { listMyFriendProfiles, type FriendListItem } from '../data/friends';
 
 const C = {
   bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
   neutral: '#94A3B8', text: '#E2E8F0', border: 'rgba(148,163,184,0.12)',
   accentMuted: 'rgba(204,255,0,0.08)', accentBorder: 'rgba(204,255,0,0.25)',
 };
-
-const FRIENDS = [
-  { id: 1, name: 'Sarah', initial: 'S' },
-  { id: 2, name: 'Mike', initial: 'M' },
-  { id: 3, name: 'Jin', initial: 'J' },
-  { id: 4, name: 'Lena', initial: 'L' },
-  { id: 5, name: 'Raj', initial: 'R' },
-];
 
 interface LogGearModalProps {
   visible: boolean;
@@ -27,34 +20,68 @@ export const LogGearModal: React.FC<LogGearModalProps> = ({ visible, onClose, on
   const [price, setPrice] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [splitEnabled, setSplitEnabled] = useState(false);
-  const [selectedFriends, setSelectedFriends] = useState<number[]>([]);
-  const [notified, setNotified] = useState<number[]>([]);
+  const [friends, setFriends] = useState<FriendListItem[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(false);
+  const [friendsError, setFriendsError] = useState<string | null>(null);
+  const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
+  const [notifiedIds, setNotifiedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!visible) return;
+    let mounted = true;
+    setFriendsError(null);
+    setLoadingFriends(true);
+    listMyFriendProfiles()
+      .then(rows => {
+        if (!mounted) return;
+        setFriends(rows);
+      })
+      .catch((e: any) => {
+        if (!mounted) return;
+        setFriends([]);
+        setFriendsError(e?.message ?? 'Failed to load teammates.');
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setLoadingFriends(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [visible]);
 
   const handleClose = () => {
     setName(''); setPrice(''); setQuantity('1');
-    setSplitEnabled(false); setSelectedFriends([]); setNotified([]);
+    setSplitEnabled(false); setSelectedFriendIds([]); setNotifiedIds([]);
     onClose();
   };
 
   const handleSubmit = () => {
-    onSubmit({ name, price, quantity, splitWith: selectedFriends });
+    onSubmit({ name, price, quantity, splitWith: selectedFriendIds });
     handleClose();
   };
 
-  const toggleFriend = (id: number) => {
-    setSelectedFriends(prev =>
+  const toggleFriend = (id: string) => {
+    setSelectedFriendIds(prev =>
       prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
     );
   };
 
-  const notifyFriend = (id: number) => {
-    setNotified(prev => [...prev, id]);
+  const notifyFriend = (id: string) => {
+    setNotifiedIds(prev => (prev.includes(id) ? prev : [...prev, id]));
   };
 
-  const totalPayers = selectedFriends.length + 1;
-  const splitAmount = price && !isNaN(parseFloat(price))
-    ? (parseFloat(price) / totalPayers).toFixed(2)
-    : '0.00';
+  const totalPayers = selectedFriendIds.length + 1;
+  const splitAmount = useMemo(() => {
+    const value = Number.parseFloat(price);
+    if (!Number.isFinite(value) || value <= 0) return '0.00';
+    return (value / totalPayers).toFixed(2);
+  }, [price, totalPayers]);
+  const totalSpending = useMemo(() => {
+    const value = Number.parseFloat(price);
+    if (!Number.isFinite(value) || value <= 0) return '0.00';
+    return value.toFixed(2);
+  }, [price]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
@@ -136,37 +163,48 @@ export const LogGearModal: React.FC<LogGearModalProps> = ({ visible, onClose, on
             {splitEnabled && (
               <View style={s.friendsList}>
                 <Text style={s.label}>SELECT FRIENDS TO SPLIT WITH</Text>
-                {FRIENDS.map(f => {
-                  const selected = selectedFriends.includes(f.id);
-                  const wasNotified = notified.includes(f.id);
-                  return (
-                    <View key={f.id} style={s.friendRow}>
-                      <TouchableOpacity
-                        style={[s.friendCheck, selected && s.friendCheckActive]}
-                        onPress={() => toggleFriend(f.id)}
-                      >
-                        {selected && <Check size={14} color={C.accentBg} />}
-                      </TouchableOpacity>
-                      <View style={s.friendAvatar}>
-                        <Text style={s.friendAvatarText}>{f.initial}</Text>
-                      </View>
-                      <Text style={s.friendName}>{f.name}</Text>
-                      {selected && !wasNotified && (
+                {loadingFriends ? (
+                  <View style={s.loadingRow}>
+                    <ActivityIndicator color={C.accent} />
+                    <Text style={s.loadingText}>Loading teammates…</Text>
+                  </View>
+                ) : friendsError ? (
+                  <Text style={s.errorText}>{friendsError}</Text>
+                ) : friends.length === 0 ? (
+                  <Text style={s.emptyText}>No teammates yet. Add friends first.</Text>
+                ) : (
+                  friends.map(f => {
+                    const selected = selectedFriendIds.includes(f.id);
+                    const wasNotified = notifiedIds.includes(f.id);
+                    return (
+                      <View key={f.id} style={s.friendRow}>
                         <TouchableOpacity
-                          style={s.notifyBtn}
-                          onPress={() => notifyFriend(f.id)}
+                          style={[s.friendCheck, selected && s.friendCheckActive]}
+                          onPress={() => toggleFriend(f.id)}
                         >
-                          <Text style={s.notifyBtnText}>Notify</Text>
+                          {selected && <Check size={14} color={C.accentBg} />}
                         </TouchableOpacity>
-                      )}
-                      {selected && wasNotified && (
-                        <View style={s.notifiedBadge}>
-                          <Check size={12} color={C.accent} />
+                        <View style={s.friendAvatar}>
+                          <Text style={s.friendAvatarText}>{f.initial}</Text>
                         </View>
-                      )}
-                    </View>
-                  );
-                })}
+                        <Text style={s.friendName}>{f.name}</Text>
+                        {selected && !wasNotified && (
+                          <TouchableOpacity
+                            style={s.notifyBtn}
+                            onPress={() => notifyFriend(f.id)}
+                          >
+                            <Text style={s.notifyBtnText}>Notify</Text>
+                          </TouchableOpacity>
+                        )}
+                        {selected && wasNotified && (
+                          <View style={s.notifiedBadge}>
+                            <Check size={12} color={C.accent} />
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })
+                )}
 
                 <View style={s.splitBreakdown}>
                   <Text style={s.breakdownTitle}>PAYMENT BREAKDOWN</Text>
@@ -174,15 +212,17 @@ export const LogGearModal: React.FC<LogGearModalProps> = ({ visible, onClose, on
                     <Text style={s.breakdownLabel}>You (Host)</Text>
                     <Text style={s.breakdownAmount}>${splitAmount}</Text>
                   </View>
-                  {FRIENDS.filter(f => selectedFriends.includes(f.id)).map(f => (
-                    <View key={f.id} style={s.breakdownRow}>
-                      <Text style={s.breakdownLabel}>{f.name}</Text>
-                      <Text style={s.breakdownAmount}>${splitAmount}</Text>
-                    </View>
-                  ))}
+                  {friends
+                    .filter(f => selectedFriendIds.includes(f.id))
+                    .map(f => (
+                      <View key={f.id} style={s.breakdownRow}>
+                        <Text style={s.breakdownLabel}>{f.name}</Text>
+                        <Text style={s.breakdownAmount}>${splitAmount}</Text>
+                      </View>
+                    ))}
                   <View style={s.totalSplitRow}>
                     <Text style={s.totalSplitLabel}>Total spending:</Text>
-                    <Text style={s.totalSplitAmount}>${price || '0.00'}</Text>
+                    <Text style={s.totalSplitAmount}>${totalSpending}</Text>
                   </View>
                 </View>
               </View>
@@ -220,6 +260,10 @@ const s = StyleSheet.create({
   yesNoBtnActive: { backgroundColor: C.accent },
   yesNoText: { color: C.neutral, fontWeight: '600', fontSize: 13 },
   friendsList: { backgroundColor: C.bg, borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: C.border },
+  loadingRow: { paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  loadingText: { color: C.neutral, fontSize: 13, marginLeft: 8 },
+  errorText: { color: '#F87171', fontSize: 12, fontWeight: '700', marginTop: 6 },
+  emptyText: { color: C.neutral, fontSize: 13, paddingVertical: 10 },
   friendRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.border },
   friendCheck: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: C.neutral, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   friendCheckActive: { backgroundColor: C.accent, borderColor: C.accent },
