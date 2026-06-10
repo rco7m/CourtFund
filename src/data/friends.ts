@@ -20,6 +20,10 @@ export type FriendListItem = FriendRow & {
   initial: string;
 };
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
 export async function listMyFriends() {
   const { data: userRes } = await supabase.auth.getUser();
   const userId = userRes.user?.id;
@@ -35,8 +39,22 @@ export async function listMyFriends() {
 }
 
 export async function findProfileById(id: string) {
-  const { data, error } = await supabase.from('profiles').select('id,display_name,email').eq('id', id).single();
-  if (error) throw error;
+  const trimmed = id.trim();
+  if (!isUuid(trimmed)) throw new Error('Enter a valid teammate ID');
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id,display_name,email')
+    .eq('id', trimmed)
+    .maybeSingle();
+
+  if (error) {
+    // Common PostgREST error for "single row requested, but got 0 or >1".
+    if ((error as any)?.code === 'PGRST116') throw new Error('No user found with that ID');
+    throw error;
+  }
+
+  if (!data) throw new Error('No user found with that ID');
   return data as FriendProfile;
 }
 
@@ -47,6 +65,7 @@ export async function sendFriendRequestById(friendId: string) {
 
   const id = friendId.trim();
   if (!id) throw new Error('Enter a valid ID');
+  if (!isUuid(id)) throw new Error('Enter a valid teammate ID');
   if (id === userId) throw new Error('You cannot add yourself');
 
   // Validate the user exists (also normalizes PostgREST error to a friendly message)

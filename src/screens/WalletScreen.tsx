@@ -328,9 +328,7 @@ export const WalletScreen = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <View style={{ paddingTop: insets.top + 10 }}>
-        <AppHeader />
-      </View>
+      <AppHeader />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={s.liquidityCard}>

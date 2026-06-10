@@ -43,7 +43,7 @@ const CHIPS = [
 export const AIAssistant = () => {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'ai', text: "Hi! I'm your CourtFund AI. Ask me about spending, performance, or equipment. 🏸" },
+    { role: 'ai', text: "Hi! I'm your SportFund AI. Ask me about spending, performance, or equipment. 🏸" },
   ]);
   const [inputText, setInputText] = useState('');
   const [thinking, setThinking] = useState(false);

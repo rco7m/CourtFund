@@ -1,4 +1,4 @@
--- CourtFund initial schema (run in Supabase SQL editor or via Supabase CLI)
+-- SportFund initial schema (run in Supabase SQL editor or via Supabase CLI)
 
 create extension if not exists pgcrypto;
 

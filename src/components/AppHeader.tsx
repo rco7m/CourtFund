@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Image } from 'react-native';
 import { Bell, X, User } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { listMyNotifications } from '../data/notifications';
 
 const C = {
@@ -12,6 +13,7 @@ const C = {
 };
 
 export const AppHeader = () => {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const [showNotif, setShowNotif] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -32,11 +34,11 @@ export const AppHeader = () => {
 
   return (
     <>
-      <View style={s.header}>
+      <View style={[s.header, { paddingTop: Math.max(insets.top, 12) }]}>
         <View style={s.logoRow}>
           <Image source={require('../assets/logo.png')} style={s.logoImg} resizeMode="contain" />
           <View style={s.logoTextWrap}>
-            <Text style={s.headerTitle}>CourtFund</Text>
+            <Text style={s.headerTitle}>SportFund</Text>
             <Text style={s.headerSub}>Personal Tracker</Text>
           </View>
         </View>

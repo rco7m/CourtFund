@@ -38,7 +38,7 @@ export const OnboardingScreen = () => {
       <View style={styles.content}>
         <Image source={require('../assets/logo.png')} style={styles.logo} resizeMode="contain" />
         
-        <Text style={styles.title}>CourtFund</Text>
+        <Text style={styles.title}>SportFund</Text>
         <Text style={styles.subtitle}>Financial Intelligence for Badminton</Text>
         
         <TouchableOpacity 

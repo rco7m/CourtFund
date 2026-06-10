@@ -18,7 +18,7 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const CourtTheme = {
+const SportTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
@@ -37,7 +37,7 @@ export const RootNavigator = () => {
   }
 
   return (
-    <NavigationContainer theme={CourtTheme}>
+    <NavigationContainer theme={SportTheme}>
       <Stack.Navigator
         screenOptions={{ headerShown: false }}
         initialRouteName={session ? 'MainTabs' : 'Onboarding'}

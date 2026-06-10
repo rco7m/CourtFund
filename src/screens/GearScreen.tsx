@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Package, AlertTriangle, ClipboardList } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { LogGearModal } from '../components/LogGearModal';
 import { AppHeader } from '../components/AppHeader';
@@ -25,7 +24,6 @@ const PurchaseItem = ({ name, date, price, isLast }: any) => (
 );
 
 export const GearScreen = () => {
-  const insets = useSafeAreaInsets();
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -56,9 +54,7 @@ export const GearScreen = () => {
 
   return (
     <View style={s.container}>
-      <View style={{ paddingTop: insets.top + 10 }}>
-        <AppHeader />
-      </View>
+      <AppHeader />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={s.pageHeader}>

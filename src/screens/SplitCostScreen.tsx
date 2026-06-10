@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Check, AlertTriangle } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
 import { listMyFriendProfiles, type FriendListItem } from '../data/friends';
 import { listMyGear } from '../data/gear';
@@ -62,7 +61,6 @@ const SplitCard = ({ title, total, perPlayer, players }: any) => (
 );
 
 export const SplitCostScreen = () => {
-  const insets = useSafeAreaInsets();
   const [friends, setFriends] = useState<FriendListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -140,9 +138,7 @@ export const SplitCostScreen = () => {
 
   return (
     <View style={s.container}>
-      <View style={{ paddingTop: insets.top + 10 }}>
-        <AppHeader />
-      </View>
+      <AppHeader />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
         <Text style={s.pageTitle}>Cost Splitting</Text>

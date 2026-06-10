@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Plus, Sparkles, ClipboardList, Star } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LogSessionModal } from '../components/LogSessionModal';
 import { AppHeader } from '../components/AppHeader';
@@ -42,7 +41,6 @@ const SessionCard = ({ title, date, stars, insight }: any) => (
 );
 
 export const SessionLogScreen = () => {
-  const insets = useSafeAreaInsets();
   const route = useRoute<any>();
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -72,9 +70,7 @@ export const SessionLogScreen = () => {
 
   return (
     <View style={s.container}>
-      <View style={{ paddingTop: insets.top + 10 }}>
-        <AppHeader />
-      </View>
+      <AppHeader />
 
       <View style={s.pageHeader}>
         <Text style={s.pageTitle}>Session Log</Text>

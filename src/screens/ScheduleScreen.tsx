@@ -9,7 +9,6 @@ import {
   RefreshControl,
   Linking,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Calendar, Check, MapPin, X } from 'lucide-react-native';
 import { AppHeader } from '../components/AppHeader';
 import { listScheduleForRange, setScheduleStatus, type ScheduleEventRow } from '../data/schedule';
@@ -140,7 +139,6 @@ const EventCard = ({
 };
 
 export const ScheduleScreen = () => {
-  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [events, setEvents] = useState<ScheduleEventRow[]>([]);
@@ -240,7 +238,7 @@ export const ScheduleScreen = () => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.accent} />}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[s.hero, { paddingTop: insets.top + 10 }]}>
+        <View style={s.hero}>
           <Text style={s.kicker}>Schedule</Text>
           <Text style={s.title}>{formatMonth(selectedDay)}</Text>
           <Text style={s.subTitle}>

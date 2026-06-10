@@ -97,7 +97,7 @@ export const LoginScreen = () => {
           <View style={styles.header}>
             <View style={styles.logoRow}>
               <Image source={require('../assets/logo.png')} style={styles.logoImg} resizeMode="contain"/>
-              <Text style={styles.logoText}>CourtFund</Text>
+              <Text style={styles.logoText}>SportFund</Text>
             </View>
             <Text style={styles.heading}>Welcome back</Text>
             <Text style={styles.subheading}>Sign in to your club account</Text>

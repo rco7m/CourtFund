@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator } from 'react-native';
 import { Star, Activity, Copy, Share2 } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { AppHeader } from '../components/AppHeader';
 import { useAuth } from '../providers/AuthProvider';
@@ -49,7 +48,6 @@ const MiniSchedule = ({ items }: { items: any[] }) => (
 );
 
 export const ProfileScreen = () => {
-  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { signOut } = useAuth();
   const [myId, setMyId] = useState<string | null>(null);
@@ -132,9 +130,7 @@ export const ProfileScreen = () => {
 
   return (
     <View style={s.container}>
-      <View style={{ paddingTop: insets.top + 12 }}>
-        <AppHeader />
-      </View>
+      <AppHeader />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
         <View style={s.profileCard}>
@@ -161,7 +157,7 @@ export const ProfileScreen = () => {
                     style={s.idIconBtn}
                     onPress={async () => {
                       await Share.share({
-                        message: `CourtFund ID: ${myId}`,
+                        message: `SportFund ID: ${myId}`,
                       });
                     }}
                     activeOpacity={0.85}

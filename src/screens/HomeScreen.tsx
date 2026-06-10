@@ -4,7 +4,6 @@ import {
   Dimensions, Animated, ActivityIndicator,
 } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import {
   AlertTriangle, Activity, Sparkles,
@@ -98,7 +97,6 @@ const ExpenseItem = ({ title, subtitle, amount, isLast }: any) => (
 );
 
 export const HomeScreen = () => {
-  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const [expenses, setExpenses] = useState<any[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
@@ -224,9 +222,7 @@ export const HomeScreen = () => {
 
   return (
     <View style={s.container}>
-      <View style={{ paddingTop: insets.top + 10 }}>
-        <AppHeader />
-      </View>
+      <AppHeader />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
         <View style={s.topSection}>
           <View style={s.dashboardCard}>

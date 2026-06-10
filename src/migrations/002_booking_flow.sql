@@ -1,4 +1,4 @@
--- Booking flow extensions for CourtFund
+-- Booking flow extensions for SportFund
 
 alter table public.schedule_events
   add column if not exists sport text,

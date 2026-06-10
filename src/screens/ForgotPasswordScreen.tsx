@@ -127,7 +127,7 @@ export const ForgotPasswordScreen = () => {
           <View style={styles.header}>
             <View style={styles.logoRow}>
               <Image source={require('../assets/logo.png')} style={styles.logoImg} resizeMode="contain" />
-              <Text style={styles.logoText}>CourtFund</Text>
+              <Text style={styles.logoText}>SportFund</Text>
             </View>
             <Text style={styles.heading}>Reset password</Text>
             <Text style={styles.subheading}>

@@ -99,7 +99,7 @@ export const SignupScreen = () => {
           <View style={s.header}>
             <View style={s.logoRow}>
               <Image source={require('../assets/logo.png')} style={s.logoImg} resizeMode="contain"/>
-              <Text style={s.logoText}>CourtFund</Text>
+              <Text style={s.logoText}>SportFund</Text>
             </View>
             <Text style={s.heading}>Join the club</Text>
             <Text style={s.subheading}>Create your account to get started</Text>

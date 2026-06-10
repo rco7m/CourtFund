@@ -384,7 +384,7 @@ const OrganizeModal = ({ visible, onClose }: any) => {
             <View style={om.permissionCard}>
               <Text style={om.permissionTitle}>Allow location access</Text>
               <Text style={om.permissionText}>
-                CourtFund uses your location to find nearby sports venues and booking links.
+                SportFund uses your location to find nearby sports venues and booking links.
               </Text>
               <View style={om.permissionActions}>
                 <TouchableOpacity
@@ -622,14 +622,11 @@ const OrganizeModal = ({ visible, onClose }: any) => {
 };
 
 export const BookScreen = () => {
-  const insets = useSafeAreaInsets();
   const [showOrganize, setShowOrganize] = useState(false);
 
   return (
     <View style={s.container}>
-      <View style={{ paddingTop: insets.top + 10 }}>
-        <AppHeader />
-      </View>
+      <AppHeader />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.pageScroll}>
         <View style={s.heroSection}>

@@ -1,4 +1,4 @@
-package com.courtfund
+package com.sportfund
 
 import android.app.Application
 import com.facebook.react.PackageList
