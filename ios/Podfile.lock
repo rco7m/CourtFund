@@ -1445,7 +1445,7 @@ PODS:
     - ReactNativeDependencies
     - Yoga
   - react-native-geolocation-service (5.3.1):
-    - React
+    - React-Core
   - react-native-maps (1.27.2):
     - react-native-maps/Maps (= 1.27.2)
   - react-native-maps/Generated (1.27.2):
@@ -2399,7 +2399,7 @@ SPEC CHECKSUMS:
   React: 1ba7d364ade7d883a1ec055bfc3606f35fdee17b
   React-callinvoker: bc2a26f8d84fb01f003fc6de6c9337b64715f95b
   React-Core: 7840d3a80b43a95c5e80ef75146bd70925ebab0f
-  React-Core-prebuilt: 34e0c18d22dcd2fdd0776991568561bfb33e9e70
+  React-Core-prebuilt: 68901b6307212ced9c8e15054158f9f16c02c771
   React-CoreModules: 2eb010400b63b89e53a324ffb3c112e4c7c3ce42
   React-cxxreact: a558e92199d26f145afa9e62c4233cf8e7950efe
   React-debug: 755200a6e7f5e6e0a40ff8d215493d43cce285fc
@@ -2428,7 +2428,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: f4ee8c62e0ef8359d139124f35a471518a172cd3
   React-microtasksnativemodule: d1956f0eec54c619b63a379520fb4c618a55ccb9
   react-native-blur: 1b00ef07fe0efdc0c40b37139a5268ccad73c72d
-  react-native-geolocation-service: 32b2c2a3b91e70ce2a8d0c684801aaeb0a07e0ec
+  react-native-geolocation-service: facc284885ec83ff6a215da1940ed6ff920e3282
   react-native-maps: 3c765513d6993ab5f330fb170ebb57caf2f2048d
   react-native-safe-area-context: 5727bd761ca52fa393b40989a6483bf859622136
   React-NativeModulesApple: 5ba0903927f6b8d335a091700e9fda143980f819
@@ -2464,7 +2464,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: e96e93b493d8d86eeaee3e590ba0be53f6abe46f
   ReactCodegen: 797de5178718324c6eba3327b07f9a423fbd5787
   ReactCommon: 07572bf9e687c8a52fbe4a3641e9e3a1a477c78e
-  ReactNativeDependencies: 8ae5de7a370d1d8bc90afd870b05ee7b003a6ba8
+  ReactNativeDependencies: 33e20833edbe4b5a3e0326fe32f6d98352d7a3d5
   RNBootSplash: c0d86dded541a26441dd35d927fae3f0855af499
   RNCClipboard: 88d7eeb555d1183915f0885bdbc5c97eb6f7f3ba
   RNDateTimePicker: 9025ccd219b382f246e9ceb85cd4095279b9bad1
@@ -2473,6 +2473,6 @@ SPEC CHECKSUMS:
   RNSVG: c69f7709226108f5eb89b5aa8833c17a36345468
   Yoga: c0b3f2c7e8d3e327e450223a2414ca3fa296b9a2
 
-PODFILE CHECKSUM: 3f102db30d85288ac1dd029ead38cb3959772e9d
+PODFILE CHECKSUM: 90553b335bed4c2f23910fd26efeffa4788a9dce
 
 COCOAPODS: 1.16.2

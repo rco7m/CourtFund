@@ -38,5 +38,56 @@ target 'SportFund' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    rctswiftui_modulemap_build = '${PODS_CONFIGURATION_BUILD_DIR}/RCTSwiftUI/RCTSwiftUI.modulemap'
+    rctswiftui_modulemap_public = '${PODS_ROOT}/Headers/Public/RCTSwiftUI/RCTSwiftUI.modulemap'
+
+    Dir.glob(File.join(__dir__, 'Pods', 'Target Support Files', '**', '*.xcconfig')).each do |xcconfig_path|
+      contents = File.read(xcconfig_path)
+      next unless contents.include?(rctswiftui_modulemap_build)
+
+      File.write(
+        xcconfig_path,
+        contents.gsub(rctswiftui_modulemap_build, rctswiftui_modulemap_public)
+      )
+    end
+
+    rctswiftui_public_headers_dir = File.join(__dir__, 'Pods', 'Headers', 'Public', 'RCTSwiftUI')
+    rctswiftui_support_dir = File.join(__dir__, 'Pods', 'Target Support Files', 'RCTSwiftUI')
+    FileUtils.mkdir_p(rctswiftui_public_headers_dir)
+    FileUtils.rm_f(File.join(rctswiftui_public_headers_dir, 'RCTSwiftUI.modulemap'))
+    FileUtils.rm_f(File.join(rctswiftui_public_headers_dir, 'RCTSwiftUI-umbrella.h'))
+    FileUtils.cp(
+      File.join(rctswiftui_support_dir, 'RCTSwiftUI.modulemap'),
+      File.join(rctswiftui_public_headers_dir, 'RCTSwiftUI.modulemap')
+    )
+    FileUtils.cp(
+      File.join(rctswiftui_support_dir, 'RCTSwiftUI-umbrella.h'),
+      File.join(rctswiftui_public_headers_dir, 'RCTSwiftUI-umbrella.h')
+    )
+
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |build_config|
+        build_config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'x86_64'
+        build_config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+
+        if target.name == 'RCTSwiftUIWrapper'
+          build_config.build_settings['HEADER_SEARCH_PATHS'] = [
+            build_config.build_settings['HEADER_SEARCH_PATHS'],
+            '"${PODS_CONFIGURATION_BUILD_DIR}/RCTSwiftUI/Swift Compatibility Header"',
+          ].compact.join(' ')
+        end
+      end
+    end
+
+    installer.aggregate_targets.each do |aggregate_target|
+      aggregate_target.user_project.native_targets.each do |target|
+        target.build_configurations.each do |build_config|
+          build_config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'x86_64'
+        end
+      end
+
+      aggregate_target.user_project.save
+    end
   end
 end
