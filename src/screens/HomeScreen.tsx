@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Dimensions, Animated, ActivityIndicator,
 } from 'react-native';
-import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import {
   AlertTriangle, Activity, Sparkles,
@@ -24,7 +24,7 @@ const C = {
 const FONTS = { headline: 'Lexend', body: 'Inter' };
 const { width } = Dimensions.get('window');
 
-const AnimatedChart = () => {
+const AnimatedChart = ({ expenses }: { expenses: any[] }) => {
   const [expanded, setExpanded] = useState(false);
   const anim = useRef(new Animated.Value(0)).current;
 
@@ -40,6 +40,44 @@ const AnimatedChart = () => {
   const chartH = anim.interpolate({ inputRange: [0, 1], outputRange: [64, 140] });
   const chartW = width - 80;
 
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const addDays = (d: Date, days: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
+  const ymdKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const series = useMemo(() => {
+    const days = 8;
+    const totals = new Map<string, number>();
+    for (const r of expenses ?? []) {
+      const when = new Date(r.occurred_at);
+      const k = ymdKey(startOfDay(when));
+      totals.set(k, (totals.get(k) ?? 0) + (Number(r.amount) || 0));
+    }
+
+    const today = startOfDay(new Date());
+    const first = addDays(today, -(days - 1));
+    const out: { date: Date; value: number }[] = [];
+    for (let i = 0; i < days; i += 1) {
+      const dt = addDays(first, i);
+      out.push({ date: dt, value: totals.get(ymdKey(dt)) ?? 0 });
+    }
+    return out;
+  }, [expenses]);
+
+  const maxV = Math.max(1, ...series.map(p => p.value || 0));
+  const padX = 24;
+  const pts = series.map((p, idx) => {
+    const x = padX + (idx / (series.length - 1)) * (chartW - padX * 2);
+    const y = 140 - (Math.max(0, p.value) / maxV) * 120;
+    return { x, y };
+  });
+
+  const lineD = pts.length
+    ? `M ${pts[0].x} ${pts[0].y} ${pts.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ')}`
+    : '';
+  const areaD = pts.length
+    ? `${lineD} L ${pts[pts.length - 1].x} 140 L ${pts[0].x} 140 Z`
+    : '';
+
   return (
     <TouchableOpacity onPress={toggle} activeOpacity={0.9}>
       <Animated.View style={[s.chartClip, { height: chartH }]}>
@@ -50,17 +88,39 @@ const AnimatedChart = () => {
               <Stop offset="1" stopColor={C.accent} stopOpacity="0" />
             </LinearGradient>
           </Defs>
-          {[30,60,90,120].map((y,i) => (
-            <Path key={i} d={`M 0 ${y} H ${chartW}`} stroke="rgba(148,163,184,0.08)" strokeWidth="1" />
-          ))}
-          <Path
-            d="M 0 110 L 40 100 L 80 80 L 120 90 L 160 55 L 200 65 L 240 35 L 280 45 L 320 20"
-            fill="none" stroke={C.accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
-          />
-          <Path
-            d="M 0 110 L 40 100 L 80 80 L 120 90 L 160 55 L 200 65 L 240 35 L 280 45 L 320 20 L 320 140 L 0 140 Z"
-            fill="url(#g)"
-          />
+          {[30,60,90,120].map((y,i) => {
+            const val = maxV - (y / 140) * maxV;
+            return (
+              <React.Fragment key={`grid-${i}`}>
+                <Path d={`M 0 ${y} H ${chartW}`} stroke="rgba(148,163,184,0.08)" strokeWidth="1" />
+                {expanded && <SvgText x={0} y={y - 4} fill={C.neutral} fontSize={9} fontWeight="600" textAnchor="start">${val.toFixed(0)}</SvgText>}
+              </React.Fragment>
+            );
+          })}
+          
+          {expanded && series.map((p, idx) => {
+            if (idx % 2 !== 0 && idx !== series.length - 1) return null;
+            if (idx === series.length - 2) return null; // Avoid overlapping with the last item
+            const x = padX + (idx / (series.length - 1)) * (chartW - padX * 2);
+            const dateLabel = `${p.date.getMonth() + 1}/${p.date.getDate()}`;
+            return (
+              <SvgText key={`date-${idx}`} x={x} y={135} fill={C.neutral} fontSize={9} fontWeight="600" textAnchor="middle">
+                {dateLabel}
+              </SvgText>
+            );
+          })}
+          {lineD ? (
+            <Path
+              d={lineD}
+              fill="none" stroke={C.accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+            />
+          ) : null}
+          {areaD ? (
+            <Path
+              d={areaD}
+              fill="url(#g)"
+            />
+          ) : null}
         </Svg>
       </Animated.View>
       <Text style={s.chartHint}>{expanded ? 'Tap to collapse' : 'Tap chart to expand'}</Text>
@@ -230,7 +290,7 @@ export const HomeScreen = () => {
             {loading ? (
               <View style={s.loadingRow}>
                 <ActivityIndicator color={C.accent} />
-                <Text style={s.loadingText}>Loading from Supabase…</Text>
+                <Text style={s.loadingText}>Loading...</Text>
               </View>
             ) : (
               <Text style={s.totalAmount}>
@@ -249,7 +309,7 @@ export const HomeScreen = () => {
                 <Text style={s.statValue}>—</Text>
               </View>
             </View>
-            {loading ? null : <AnimatedChart />}
+            {loading ? null : <AnimatedChart expenses={expenses} />}
           </View>
         </View>
 
@@ -287,7 +347,7 @@ export const HomeScreen = () => {
           </View>
           <View style={s.expenseList}>
             {loading ? (
-              <ExpenseItem title="Loading…" subtitle="Syncing expenses from Supabase" amount="" isLast />
+              <ExpenseItem title="Loading…" subtitle="Syncing expenses" amount="" isLast />
             ) : expenses.length === 0 ? (
               <ExpenseItem title="No expenses yet" subtitle="Log one from Wallet" amount="" isLast />
             ) : (

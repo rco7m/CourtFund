@@ -40,10 +40,10 @@ export const LogSessionModal: React.FC<LogSessionModalProps> = ({ visible, onClo
   const renderContent = () => {
     switch (step) {
       case 1:
-        const types = ['Singles', 'Doubles', 'Drills', 'Class'];
+        const types = ['Match', 'Practice', 'Class', 'Other'];
         return (
           <View>
-            <Text style={styles.questionTitle}>What did you play?</Text>
+            <Text style={styles.questionTitle}>What type of session?</Text>
             <View style={styles.buttonGrid}>
               {types.map((type) => (
                 <TouchableOpacity 
@@ -63,10 +63,10 @@ export const LogSessionModal: React.FC<LogSessionModalProps> = ({ visible, onClo
           </View>
         );
       case 2:
-        const levels = ['Beginner', 'Intermediate', 'Advanced', 'Competitive'];
+        const levels = ['Light', 'Moderate', 'High', 'Max'];
         return (
           <View>
-            <Text style={styles.questionTitle}>Your level of play?</Text>
+            <Text style={styles.questionTitle}>Session Intensity?</Text>
             <View style={styles.buttonGrid}>
               {levels.map((lvl) => (
                 <TouchableOpacity 
@@ -91,11 +91,11 @@ export const LogSessionModal: React.FC<LogSessionModalProps> = ({ visible, onClo
       case 3:
         return (
           <View>
-            <Text style={styles.questionTitle}>How'd you perform?</Text>
+            <Text style={styles.questionTitle}>How did you perform?</Text>
             <View style={styles.starsContainer}>
               {[1, 2, 3, 4, 5].map((s) => (
                 <TouchableOpacity key={s} onPress={() => setRating(s)} style={styles.starWrapper}>
-                  <Star size={36} color="#5B738B" fill={s <= rating ? '#5B738B' : 'transparent'} strokeWidth={1.5} />
+                  <Star size={36} color="#CCFF00" fill={s <= rating ? '#CCFF00' : 'transparent'} strokeWidth={1.5} />
                   <Text style={styles.starSubText}>{s}</Text>
                 </TouchableOpacity>
               ))}
@@ -145,7 +145,7 @@ export const LogSessionModal: React.FC<LogSessionModalProps> = ({ visible, onClo
         <View style={styles.modalContent}>
           <View style={styles.headerRow}>
             <View>
-              <Text style={styles.modalTitle}>Log Court Session</Text>
+              <Text style={styles.modalTitle}>Log Session</Text>
               <Text style={styles.questionStepText}>Question {step} of 4</Text>
             </View>
             <TouchableOpacity onPress={handleClose}>
@@ -168,14 +168,14 @@ export const LogSessionModal: React.FC<LogSessionModalProps> = ({ visible, onClo
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(138, 155, 179, 0.6)', 
+    backgroundColor: 'rgba(0, 0, 0, 0.6)', 
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
     width: '100%',
-    backgroundColor: '#FFF',
+    backgroundColor: '#1E293B',
     borderRadius: 24,
     padding: 24,
     shadowColor: '#000',
@@ -183,6 +183,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(148,163,184,0.12)',
   },
   headerRow: {
     flexDirection: 'row',
@@ -193,33 +195,33 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#13284B',
+    color: '#E2E8F0',
     marginBottom: 4,
   },
   questionStepText: {
     fontSize: 14,
-    color: '#5B738B',
+    color: '#94A3B8',
   },
   cancelText: {
     fontSize: 16,
-    color: '#5B738B',
+    color: '#94A3B8',
   },
   progressBarWrapper: {
     height: 4,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: 'rgba(148,163,184,0.12)',
     borderRadius: 2,
     marginVertical: 20,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#208B59',
+    backgroundColor: '#CCFF00',
     borderRadius: 2,
   },
   questionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#13284B',
+    color: '#E2E8F0',
     marginBottom: 20,
   },
   buttonGrid: {
@@ -230,22 +232,26 @@ const styles = StyleSheet.create({
   },
   optionButton: {
     width: '48%',
-    backgroundColor: '#F0F2F5',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     paddingVertical: 14,
     borderRadius: 16,
     alignItems: 'center',
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(148,163,184,0.12)',
   },
   optionButtonActive: {
-    backgroundColor: '#208B59', // Active state generic
+    backgroundColor: '#CCFF00',
+    borderColor: '#CCFF00',
   },
   optionText: {
     fontSize: 16,
-    color: '#13284B',
+    color: '#E2E8F0',
     fontWeight: '500',
   },
   optionTextActive: {
-    color: '#FFF',
+    color: '#0A0F1E',
+    fontWeight: '700',
   },
   starsContainer: {
     flexDirection: 'row',
@@ -259,7 +265,7 @@ const styles = StyleSheet.create({
   starSubText: {
     marginTop: 8,
     fontSize: 14,
-    color: '#5B738B',
+    color: '#94A3B8',
   },
   footerSingle: {
     alignItems: 'center',
@@ -269,33 +275,35 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   primaryButton: {
-    backgroundColor: '#208B59',
+    backgroundColor: '#CCFF00',
     width: '100%',
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
   },
   primaryButtonHalf: {
-    backgroundColor: '#208B59',
+    backgroundColor: '#CCFF00',
     width: '48%',
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: '#FFF',
+    color: '#0A0F1E',
     fontSize: 18,
     fontWeight: 'bold',
   },
   secondaryButton: {
-    backgroundColor: '#F0F2F5',
+    backgroundColor: 'rgba(148,163,184,0.10)',
     width: '48%',
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(148,163,184,0.12)',
   },
   secondaryButtonText: {
-    color: '#13284B',
+    color: '#E2E8F0',
     fontSize: 18,
     fontWeight: '600',
   },

@@ -28,8 +28,11 @@ export async function updateMyProfile(update: Partial<Pick<Profile, 'display_nam
 }
 
 export async function getMyStats() {
-  const { data, error } = await supabase.from('user_stats').select('user_id,sessions_count,hours_total,avg_rating,streak_days').single();
+  const { data, error } = await supabase.from('user_stats').select('user_id,sessions_count,hours_total,avg_rating,streak_days').maybeSingle();
   if (error) throw error;
+  if (!data) {
+    return { user_id: '', sessions_count: 0, hours_total: 0, avg_rating: null, streak_days: 0 };
+  }
   return data as UserStats;
 }
 
@@ -54,6 +57,10 @@ export async function recomputeMyStats() {
   }
   let streakDays = 0;
   const cursor = new Date();
+  const todayStr = cursor.toISOString().slice(0, 10);
+  if (!daysWithSession.has(todayStr)) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
   while (true) {
     const key = cursor.toISOString().slice(0, 10);
     if (!daysWithSession.has(key)) break;
@@ -72,7 +79,9 @@ export async function recomputeMyStats() {
     avg_rating: avgRating ? Number(avgRating.toFixed(2)) : null,
     streak_days: streakDays,
     updated_at: new Date().toISOString(),
-  });
-  if (error) throw error;
+  }, { onConflict: 'user_id' });
+  if (error) {
+    console.warn('Failed to upsert user_stats:', error);
+  }
 }
 

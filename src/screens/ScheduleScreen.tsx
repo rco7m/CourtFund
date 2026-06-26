@@ -9,7 +9,7 @@ import {
   RefreshControl,
   Linking,
 } from 'react-native';
-import { Calendar, Check, MapPin, X } from 'lucide-react-native';
+import { Calendar, Check, MapPin, X, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { AppHeader } from '../components/AppHeader';
 import { listScheduleForRange, setScheduleStatus, type ScheduleEventRow } from '../data/schedule';
 
@@ -242,28 +242,36 @@ export const ScheduleScreen = () => {
           <Text style={s.kicker}>Schedule</Text>
           <Text style={s.title}>{formatMonth(selectedDay)}</Text>
           <Text style={s.subTitle}>
-            Only days with actual Supabase events show markers.
+            Only days with actual events show markers.
           </Text>
         </View>
 
-        <View style={s.weekCard}>
-          {weekDays.map(day => {
-            const key = dayKey(day);
-            const hasEvents = Boolean(counts[key]);
-            const active = key === selectedKey;
-            return (
-              <TouchableOpacity
-                key={key}
-                style={[s.dayCell, active && s.dayCellActive]}
-                onPress={() => setSelectedDay(day)}
-                activeOpacity={0.85}
-              >
-                <Text style={[s.dayLabel, active && s.dayLabelActive]}>{formatDayShort(day)}</Text>
-                <Text style={[s.dayNum, active && s.dayNumActive]}>{formatDayNum(day)}</Text>
-                <View style={[s.dot, hasEvents && s.dotActive]} />
-              </TouchableOpacity>
-            );
-          })}
+        <View style={s.weekNavRow}>
+          <TouchableOpacity onPress={() => setSelectedDay(addDays(selectedDay, -7))} style={s.navBtn}>
+            <ChevronLeft color={C.neutral} size={24} />
+          </TouchableOpacity>
+          <View style={s.weekCard}>
+            {weekDays.map(day => {
+              const key = dayKey(day);
+              const hasEvents = Boolean(counts[key]);
+              const active = key === selectedKey;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[s.dayCell, active && s.dayCellActive]}
+                  onPress={() => setSelectedDay(day)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[s.dayLabel, active && s.dayLabelActive]}>{formatDayShort(day)}</Text>
+                  <Text style={[s.dayNum, active && s.dayNumActive]}>{formatDayNum(day)}</Text>
+                  <View style={[s.dot, hasEvents && s.dotActive]} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <TouchableOpacity onPress={() => setSelectedDay(addDays(selectedDay, 7))} style={s.navBtn}>
+            <ChevronRight color={C.neutral} size={24} />
+          </TouchableOpacity>
         </View>
 
         {loading ? (
@@ -284,7 +292,7 @@ export const ScheduleScreen = () => {
           <View style={s.emptyCard}>
             <Text style={s.emptyTitle}>No events on this day</Text>
             <Text style={s.emptyText}>
-              Book a session and it will appear here from Supabase.
+              Book a session and it will appear here.
             </Text>
           </View>
         ) : (
@@ -334,8 +342,19 @@ const s = StyleSheet.create({
   kicker: { color: C.accent, textTransform: 'uppercase', letterSpacing: 2, fontSize: 12, fontWeight: '800' },
   title: { color: C.text, fontSize: 30, fontWeight: '900', marginTop: 8 },
   subTitle: { color: C.neutral, fontSize: 14, marginTop: 6, lineHeight: 20 },
+  weekNavRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 8,
+    marginBottom: 18,
+  },
+  navBtn: {
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   weekCard: {
-    marginHorizontal: 16,
+    flex: 1,
     backgroundColor: C.card,
     borderRadius: 22,
     padding: 12,
@@ -343,7 +362,6 @@ const s = StyleSheet.create({
     borderColor: C.border,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 18,
   },
   dayCell: {
     flex: 1,

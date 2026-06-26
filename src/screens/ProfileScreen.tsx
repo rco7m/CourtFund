@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator } from 'react-native';
 import { Star, Activity, Copy, Share2 } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { AppHeader } from '../components/AppHeader';
 import { useAuth } from '../providers/AuthProvider';
 import { getMyProfile, getMyStats, recomputeMyStats } from '../data/profiles';
@@ -63,42 +63,44 @@ export const ProfileScreen = () => {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [schedule, setSchedule] = useState<any[]>([]);
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        if (mounted) setLoading(true);
-        await recomputeMyStats();
-        const { data: userRes } = await supabase.auth.getUser();
-        if (mounted) setMyId(userRes.user?.id ?? null);
-        const [profile, s, sessionRows, expenseRows, scheduleRows] = await Promise.all([
-          getMyProfile(),
-          getMyStats(),
-          listMySessions(),
-          listMyExpenses(50),
-          supabase.from('schedule_events').select('id,title,start_time,tag').order('start_time', { ascending: false }),
-        ]);
-        if (!mounted) return;
-        setDisplayName(profile.display_name || profile.email || 'Player Profile');
-        setStats({
-          sessions: s.sessions_count ?? 0,
-          hours: `${Math.round((s.hours_total ?? 0) * 10) / 10}h`,
-          avgRating: s.avg_rating ? String(s.avg_rating) : '-',
-          streak: `${s.streak_days ?? 0}d`,
-        });
-        setSessions(sessionRows.slice(0, 4));
-        setExpenses(expenseRows);
-        setSchedule((scheduleRows.data ?? []).slice(0, 5));
-      } catch {
-        // keep defaults
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      let mounted = true;
+      (async () => {
+        try {
+          if (mounted) setLoading(true);
+          await recomputeMyStats();
+          const { data: userRes } = await supabase.auth.getUser();
+          if (mounted) setMyId(userRes.user?.id ?? null);
+          const [profile, s, sessionRows, expenseRows, scheduleRows] = await Promise.all([
+            getMyProfile(),
+            getMyStats(),
+            listMySessions(),
+            listMyExpenses(50),
+            supabase.from('schedule_events').select('id,title,start_time,tag').order('start_time', { ascending: false }),
+          ]);
+          if (!mounted) return;
+          setDisplayName(profile.display_name || profile.email || 'Player Profile');
+          setStats({
+            sessions: s.sessions_count ?? 0,
+            hours: `${Math.round((s.hours_total ?? 0) * 10) / 10}h`,
+            avgRating: s.avg_rating ? String(s.avg_rating) : '-',
+            streak: `${s.streak_days ?? 0}d`,
+          });
+          setSessions(sessionRows.slice(0, 4));
+          setExpenses(expenseRows);
+          setSchedule((scheduleRows.data ?? []).slice(0, 5));
+        } catch {
+          // keep defaults
+        } finally {
+          if (mounted) setLoading(false);
+        }
+      })();
+      return () => {
+        mounted = false;
+      };
+    }, [])
+  );
 
   const monthlyBars = useMemo(() => {
     const months = Array.from({ length: 6 }, (_, idx) => {
@@ -177,7 +179,7 @@ export const ProfileScreen = () => {
         {loading ? (
           <View style={s.loadingCard}>
             <ActivityIndicator color={C.accent} />
-            <Text style={s.loadingText}>Loading from Supabase…</Text>
+            <Text style={s.loadingText}>Loading...</Text>
           </View>
         ) : null}
 
@@ -213,7 +215,7 @@ export const ProfileScreen = () => {
             <View style={s.injuryIcon}><Activity size={18} color={C.warn} /></View>
             <View style={s.injuryTextWrap}>
               <Text style={s.injuryTitle}>Weekly activity</Text>
-              <Text style={s.injuryDesc}>{sessions.length} recent sessions loaded from Supabase.</Text>
+              <Text style={s.injuryDesc}>{sessions.length} recent sessions loaded.</Text>
             </View>
           </View>
         </View>

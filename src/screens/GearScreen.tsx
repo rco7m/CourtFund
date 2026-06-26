@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Package, AlertTriangle, ClipboardList } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LogGearModal } from '../components/LogGearModal';
 import { AppHeader } from '../components/AppHeader';
 import { createGearItem, listMyGear } from '../data/gear';
 import { createExpense } from '../data/expenses';
+import { supabase } from '../lib/supabase';
 
 const C = {
   bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
@@ -116,21 +117,41 @@ export const GearScreen = () => {
         visible={modalVisible} 
         onClose={() => setModalVisible(false)} 
         onSubmit={async (data) => {
+          const nameToSave = data.name || 'Gear Item';
           const amount = Number.parseFloat(data.price || '0');
           const qty = Number.parseInt(data.quantity || '1', 10) || 1;
-          const created = await createGearItem({
-            name: data.name || 'Gear Item',
-            category: 'other',
-            brand: null,
-            quantity: qty,
-            unit: 'pcs',
-            purchase_date: new Date().toISOString().slice(0, 10),
-            cost: Number.isFinite(amount) ? amount : null,
-            status: 'active',
-            notes: data.splitWith?.length ? `Split with ${data.splitWith.length} friend(s)` : null,
-          });
-          if (Number.isFinite(amount) && amount > 0) {
-            await createExpense({ type: 'gear', amount, note: `Gear: ${created.name}` });
+          const splitCount = data.splitWith?.length ? data.splitWith.length + 1 : 1;
+          const myCost = amount / splitCount;
+
+          const existing = gearItems.find(g => g.name.toLowerCase() === nameToSave.toLowerCase());
+
+          if (existing) {
+            const newQty = (existing.quantity || 0) + qty;
+            const newCost = (existing.cost || 0) + (Number.isFinite(myCost) ? myCost : 0);
+            
+            await supabase.from('gear_items').update({
+               quantity: newQty,
+               cost: newCost
+            }).eq('id', existing.id);
+
+            if (Number.isFinite(myCost) && myCost > 0) {
+              await createExpense({ type: 'gear', amount: myCost, note: `Restocked Gear: ${existing.name}` });
+            }
+          } else {
+            const created = await createGearItem({
+              name: nameToSave,
+              category: 'other',
+              brand: null,
+              quantity: qty,
+              unit: 'pcs',
+              purchase_date: new Date().toISOString().slice(0, 10),
+              cost: Number.isFinite(myCost) ? myCost : null,
+              status: 'active',
+              notes: data.splitWith?.length ? `Split with ${data.splitWith.length} friend(s)` : null,
+            });
+            if (Number.isFinite(myCost) && myCost > 0) {
+              await createExpense({ type: 'gear', amount: myCost, note: `Gear: ${created.name}` });
+            }
           }
           await load();
         }} 

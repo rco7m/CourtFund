@@ -39,7 +39,7 @@ export const OnboardingScreen = () => {
         <Image source={require('../assets/logo.png')} style={styles.logo} resizeMode="contain" />
         
         <Text style={styles.title}>SportFund</Text>
-        <Text style={styles.subtitle}>Financial Intelligence for Badminton</Text>
+        <Text style={styles.subtitle}>Financial Intelligence for Athletes</Text>
         
         <TouchableOpacity 
           style={styles.button}
@@ -50,7 +50,7 @@ export const OnboardingScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.footerText}>MADE FOR BADMINTON</Text>
+      <Text style={styles.footerText}>MADE FOR ATHLETES</Text>
     </View>
   );
 };

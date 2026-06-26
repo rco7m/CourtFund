@@ -258,36 +258,11 @@ const AddTransactionModal = ({ visible, onClose, onCreate }: any) => {
   );
 };
 
-const AddFundsModal = ({ visible, onClose }: any) => {
-  const [amount, setAmount] = useState('');
-  const insets = useSafeAreaInsets();
-  return (
-    <Modal visible={visible} transparent animationType="slide">
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: insets.bottom + 24, borderTopWidth: 1, borderColor: C.border }}>
-          <Text style={{ color: C.text, fontSize: 18, fontWeight: '700', marginBottom: 20 }}>Add Funds</Text>
-          <Text style={{ color: C.neutral, fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 }}>AMOUNT ($)</Text>
-          <TextInput
-            style={{ backgroundColor: C.bg, borderRadius: 14, paddingHorizontal: 16, height: 54, fontSize: 24, color: C.accent, fontWeight: '700', borderWidth: 1, borderColor: C.border, marginBottom: 20 }}
-            placeholder="0.00" placeholderTextColor={C.neutral}
-            keyboardType="decimal-pad" value={amount} onChangeText={setAmount}
-          />
-          <TouchableOpacity style={{ backgroundColor: C.accent, borderRadius: 30, paddingVertical: 15, alignItems: 'center' }} onPress={onClose}>
-            <Text style={{ color: C.bg, fontWeight: '800', fontSize: 15 }}>CONFIRM TOP-UP</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={{ marginTop: 12, alignItems: 'center' }} onPress={onClose}>
-            <Text style={{ color: C.neutral, fontSize: 14 }}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-};
+
 
 export const WalletScreen = () => {
   const insets = useSafeAreaInsets();
   const [showAdd, setShowAdd] = useState(false);
-  const [showFunds, setShowFunds] = useState(false);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -336,10 +311,6 @@ export const WalletScreen = () => {
             <Text style={s.liquidityLabel}>TOTAL SPEND</Text>
             <Text style={s.liquidityAmount}>$ {totalOutflow.toFixed(2)}</Text>
           </View>
-          <TouchableOpacity style={s.addFundsBtn} onPress={() => setShowFunds(true)}>
-            <Plus size={14} color={C.bg} style={{ marginRight: 6 }} />
-            <Text style={s.addFundsText}>Add Funds</Text>
-          </TouchableOpacity>
         </View>
 
         <View style={s.card}>
@@ -404,7 +375,6 @@ export const WalletScreen = () => {
           await load();
         }}
       />
-      <AddFundsModal visible={showFunds} onClose={() => setShowFunds(false)} />
     </View>
   );
 };
@@ -413,8 +383,6 @@ const s = StyleSheet.create({
   liquidityCard:{backgroundColor:C.card,marginHorizontal:20,borderRadius:20,padding:20,flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:16,borderWidth:1,borderColor:C.border},
   liquidityLabel:{color:C.neutral,fontSize:10,fontWeight:'700',letterSpacing:1,marginBottom:4},
   liquidityAmount:{color:C.accent,fontSize:28,fontWeight:'800'},
-  addFundsBtn:{flexDirection:'row',alignItems:'center',backgroundColor:C.accent,paddingHorizontal:14,paddingVertical:8,borderRadius:20},
-  addFundsText:{color:C.bg,fontWeight:'700',fontSize:12},
   card:{backgroundColor:C.card,marginHorizontal:20,borderRadius:20,padding:20,marginBottom:16,borderWidth:1,borderColor:C.border},
   cardTitle:{color:C.neutral,fontSize:10,fontWeight:'700',letterSpacing:1,marginBottom:20},
   chartBox:{alignItems:'center',marginBottom:20},

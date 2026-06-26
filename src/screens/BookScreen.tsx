@@ -10,6 +10,7 @@ import {
 } from 'lucide-react-native';
 import { AppHeader } from '../components/AppHeader';
 import { createScheduleEvent } from '../data/schedule';
+import { createExpense } from '../data/expenses';
 import { minutesFromDurationLabel } from '../lib/datetime';
 import { listMyFriendProfiles, type FriendListItem } from '../data/friends';
 import { supabase } from '../lib/supabase';
@@ -357,6 +358,14 @@ const OrganizeModal = ({ visible, onClose }: any) => {
         friends: selectedFriends,
       });
 
+      const totalCost = v.estimatedCost || 20; // Fallback estimate
+      const splitCost = totalCost / (selectedFriends.length + 1);
+      await createExpense({
+        type: 'booking',
+        amount: splitCost,
+        note: `Booking ${sport} at ${v.name}`
+      });
+
       const query = [v.name, v.address, sport, 'booking'].filter(Boolean).join(' ');
       const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
       await Linking.openURL(searchUrl);
@@ -524,6 +533,7 @@ const OrganizeModal = ({ visible, onClose }: any) => {
                     value={bookingDateTime}
                     mode="date"
                     display="inline"
+                    themeVariant="dark"
                     minimumDate={new Date()}
                     onChange={(_event, selectedDate) => {
                       if (selectedDate) {
@@ -546,6 +556,7 @@ const OrganizeModal = ({ visible, onClose }: any) => {
                     value={bookingDateTime}
                     mode="time"
                     display="spinner"
+                    themeVariant="dark"
                     is24Hour
                     onChange={(_event, selectedTime) => {
                       if (selectedTime) {

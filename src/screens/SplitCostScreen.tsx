@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Check, AlertTriangle } from 'lucide-react-native';
 import { AppHeader } from '../components/AppHeader';
 import { listMyFriendProfiles, type FriendListItem } from '../data/friends';
 import { listMyGear } from '../data/gear';
 import { listMyExpenses } from '../data/expenses';
+import { supabase } from '../lib/supabase';
 
 const C = {
   bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
@@ -41,7 +42,7 @@ const PlayerSplitRow = ({ initial, name, amount, status, color }: any) => (
   </View>
 );
 
-const SplitCard = ({ title, total, perPlayer, players }: any) => (
+const SplitCard = ({ title, total, perPlayer, players, onApplySplit, applying }: any) => (
   <View style={s.splitCard}>
     <View style={s.splitHeader}>
       <Text style={s.splitTitle}>{title}</Text>
@@ -55,7 +56,12 @@ const SplitCard = ({ title, total, perPlayer, players }: any) => (
         <Text style={s.emptyText}>Add friends in the Friends screen to split costs here.</Text>
       </View>
     ) : (
-      players.map((p: any) => <PlayerSplitRow key={p.id} {...p} />)
+      <>
+        {players.map((p: any) => <PlayerSplitRow key={p.id} {...p} />)}
+        <TouchableOpacity style={s.applySplitBtn} onPress={onApplySplit} disabled={applying}>
+          <Text style={s.applySplitText}>{applying ? 'Splitting...' : 'Confirm Split'}</Text>
+        </TouchableOpacity>
+      </>
     )}
   </View>
 );
@@ -66,8 +72,9 @@ export const SplitCostScreen = () => {
   const [errorText, setErrorText] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<SplitCandidate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [applying, setApplying] = useState(false);
 
-  useEffect(() => {
+  const loadData = () => {
     let mounted = true;
     setLoading(true);
     setErrorText(null);
@@ -100,7 +107,9 @@ export const SplitCostScreen = () => {
 
         const all = [...gearCandidates, ...expenseCandidates].slice(0, 12);
         setCandidates(all);
-        setSelectedId(all[0]?.id ?? null);
+        if (!all.find(c => c.id === selectedId)) {
+          setSelectedId(all[0]?.id ?? null);
+        }
       })
       .catch((e: any) => {
         if (!mounted) return;
@@ -113,10 +122,31 @@ export const SplitCostScreen = () => {
         if (!mounted) return;
         setLoading(false);
       });
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
+  };
+
+  useEffect(() => {
+    return loadData();
   }, []);
+
+  const handleApplySplit = async () => {
+    if (!selected || !selectedId) return;
+    try {
+      setApplying(true);
+      const dbId = selectedId.split('-')[1];
+      if (selected.kind === 'gear') {
+        await supabase.from('gear').update({ cost: splitAmount }).eq('id', dbId);
+      } else {
+        await supabase.from('expenses').update({ amount: splitAmount }).eq('id', dbId);
+      }
+      Alert.alert('Split Complete', `Your cost was split and your friends have been notified!`);
+      loadData();
+    } catch (e: any) {
+      setErrorText(e?.message ?? 'Failed to apply split.');
+    } finally {
+      setApplying(false);
+    }
+  };
 
   const selected = useMemo(() => candidates.find(c => c.id === selectedId) ?? null, [candidates, selectedId]);
   const splitAmount = useMemo(() => {
@@ -179,6 +209,8 @@ export const SplitCostScreen = () => {
               total={selected ? `$${selected.amount.toFixed(2)}` : '—'}
               perPlayer={selected ? `$${splitAmount.toFixed(2)}` : '—'}
               players={splitPlayers}
+              onApplySplit={handleApplySplit}
+              applying={applying}
             />
           </>
         )}
@@ -221,4 +253,6 @@ const s = StyleSheet.create({
   remindBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.accent, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
   remindText: { color: C.accentBg, fontWeight: '700', fontSize: 12 },
   badgeIcon: { marginRight: 4 },
+  applySplitBtn: { margin: 18, marginTop: 4, backgroundColor: C.accent, paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
+  applySplitText: { color: C.bg, fontWeight: '800', fontSize: 14 },
 });

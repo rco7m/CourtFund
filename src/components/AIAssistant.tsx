@@ -5,30 +5,12 @@ import {
   Platform, ActivityIndicator,
 } from 'react-native';
 import { MessageCircle, X, Send, Sparkles } from 'lucide-react-native';
+import { getGeminiResponse } from '../services/geminiService';
 
 const PANEL_HEIGHT = 400;
 const TAB_BAR_HEIGHT = 90;
 
-const getMockResponse = (input: string): string => {
-  const q = input.toLowerCase();
-  if (q.includes('spend') || q.includes('month') || q.includes('cost'))
-    return "💰 This month you've spent $283.50 total — $90.00 on court bookings and $193.50 on equipment & gear. You're 17% under your monthly average of $340.";
-  if (q.includes('shuttle') || q.includes('order') || q.includes('stock'))
-    return "📦 Based on your burn rate of 2 tubes/week, you have ~7 days of stock left. I recommend ordering 6 shuttle tubes by Thursday to avoid disruption.";
-  if (q.includes('injury') || q.includes('risk') || q.includes('rest'))
-    return "⚠️ You've logged ~5 sessions this week — above your average of 3. Your injury risk is Moderate. Consider taking tomorrow as a rest day.";
-  if (q.includes('skill') || q.includes('level') || q.includes('progress'))
-    return "📈 Your current skill level is A- based on 5 logged sessions. Strongest: Footwork (79%). Most room to improve: Defense (72%).";
-  if (q.includes('session') || q.includes('play') || q.includes('rating'))
-    return "🏸 You've logged 5 sessions this month with an avg rating of 4.0 ⭐. Best session: Singles on Mar 10 (5 stars). Keep it up!";
-  if (q.includes('streak') || q.includes('days'))
-    return "🔥 You're on a 6-day streak! You've played 6 hours this month. Consistency is your biggest strength!";
-  if (q.includes('book') || q.includes('court'))
-    return "📅 Your next booking is Court 2 on Monday at 6:00 PM (90 min). Court 1 is also available Saturday at 10:00 AM.";
-  if (q.includes('saving') || q.includes('cheaper') || q.includes('price'))
-    return "💡 BadmintonDirect offers AS-30 tubes at $28.50 vs your current $35.00 — saving $6.50/tube (~$42/month at your usage rate).";
-  return "🤔 Great question! Based on your recent activity everything looks on track. Want me to dig into spending, equipment health, or performance?";
-};
+// Removed getMockResponse since we use actual Gemini API now
 
 type Message = { role: 'user' | 'ai'; text: string };
 
@@ -49,18 +31,19 @@ export const AIAssistant = () => {
   const [thinking, setThinking] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
-  const send = (textOverride?: string) => {
+  const send = async (textOverride?: string) => {
     const msg = (textOverride ?? inputText).trim();
     if (!msg) return;
     setMessages(prev => [...prev, { role: 'user', text: msg }]);
     setInputText('');
     setThinking(true);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
-    setTimeout(() => {
-      setMessages(prev => [...prev, { role: 'ai', text: getMockResponse(msg) }]);
-      setThinking(false);
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
-    }, 900);
+    
+    const responseText = await getGeminiResponse(msg);
+    
+    setMessages(prev => [...prev, { role: 'ai', text: responseText }]);
+    setThinking(false);
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
   };
 
   return (
