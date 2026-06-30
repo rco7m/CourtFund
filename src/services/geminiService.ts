@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { EXPO_PUBLIC_GEMINI_API_KEY } from '@env';
 
-const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+const apiKey = EXPO_PUBLIC_GEMINI_API_KEY;
 let genAI: GoogleGenerativeAI | null = null;
 if (apiKey) {
   genAI = new GoogleGenerativeAI(apiKey);

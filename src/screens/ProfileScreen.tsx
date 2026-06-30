@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Alert, ActivityIndicator } from 'react-native';
 import { Star, Activity, Copy, Share2 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { AppHeader } from '../components/AppHeader';
 import { useAuth } from '../providers/AuthProvider';
-import { getMyProfile, getMyStats, recomputeMyStats } from '../data/profiles';
+import { getMyProfile, recomputeMyStats } from '../data/profiles';
+import { getMyUserStats } from '../data/userStats';
 import { listMySessions } from '../data/sessions';
 import { listMyExpenses } from '../data/expenses';
 import { supabase } from '../lib/supabase';
@@ -16,6 +17,37 @@ const C = {
   neutral: '#94A3B8', text: '#E2E8F0', border: 'rgba(148,163,184,0.12)',
   accentMuted: 'rgba(204,255,0,0.08)', accentBorder: 'rgba(204,255,0,0.25)',
   warn: '#F59E0B', warnMuted: 'rgba(245,158,11,0.1)',
+};
+
+const toDayKey = (value: string) => {
+  const date = new Date(value);
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString().slice(0, 10);
+};
+
+const deriveStatsFromSessions = (sessionRows: any[]) => {
+  const sessionsCount = sessionRows.length;
+  const hoursTotal = sessionRows.reduce((sum, row) => sum + ((row.duration_minutes ?? 0) / 60), 0);
+  const ratings = sessionRows.map(row => row.rating).filter((rating): rating is number => typeof rating === 'number');
+  const averageRating = ratings.length ? ratings.reduce((sum, value) => sum + value, 0) / ratings.length : null;
+
+  const daysWithSession = new Set(sessionRows.map(row => toDayKey(row.occurred_at)));
+  let streakDays = 0;
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+  if (!daysWithSession.has(cursor.toISOString().slice(0, 10))) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  while (daysWithSession.has(cursor.toISOString().slice(0, 10))) {
+    streakDays += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return {
+    sessions: sessionsCount,
+    hours: `${Math.round(hoursTotal * 10) / 10}h`,
+    avgRating: averageRating ? averageRating.toFixed(1) : '-',
+    streak: `${streakDays}d`,
+  };
 };
 
 const RecentSession = ({ title, date, stars, isLast }: any) => (
@@ -50,6 +82,7 @@ const MiniSchedule = ({ items }: { items: any[] }) => (
 export const ProfileScreen = () => {
   const navigation = useNavigation<any>();
   const { signOut } = useAuth();
+  const refreshInFlightRef = useRef(false);
   const [myId, setMyId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState('Player Profile');
   const [loading, setLoading] = useState(true);
@@ -65,56 +98,101 @@ export const ProfileScreen = () => {
 
   useFocusEffect(
     React.useCallback(() => {
-      let mounted = true;
-      (async () => {
+      let active = true;
+
+      const loadProfileData = async (showLoader: boolean) => {
+        if (refreshInFlightRef.current) return;
+        refreshInFlightRef.current = true;
         try {
-          if (mounted) setLoading(true);
-          await recomputeMyStats();
+          if (active && showLoader) setLoading(true);
+          recomputeMyStats().catch(error => {
+            console.warn('Profile recomputeMyStats failed:', error);
+          });
           const { data: userRes } = await supabase.auth.getUser();
-          if (mounted) setMyId(userRes.user?.id ?? null);
-          const [profile, s, sessionRows, expenseRows, scheduleRows] = await Promise.all([
+          if (active) setMyId(userRes.user?.id ?? null);
+          const results = await Promise.allSettled([
             getMyProfile(),
-            getMyStats(),
+            getMyUserStats(),
             listMySessions(),
             listMyExpenses(50),
             supabase.from('schedule_events').select('id,title,start_time,tag').order('start_time', { ascending: false }),
           ]);
-          if (!mounted) return;
+          if (!active) return;
+
+          const [profileResult, statsResult, sessionsResult, expensesResult, scheduleResult] = results;
+          const profile = profileResult.status === 'fulfilled' ? profileResult.value : { id: '', email: null, display_name: null, avatar_url: null };
+          const sessionRows = sessionsResult.status === 'fulfilled' ? sessionsResult.value : [];
+          const statsRow = statsResult.status === 'fulfilled' ? statsResult.value : null;
+          const expenseRows = expensesResult.status === 'fulfilled' ? expensesResult.value : [];
+          const scheduleRows = scheduleResult.status === 'fulfilled' ? scheduleResult.value : { data: [] };
+
+          const failureMessages = results
+            .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+            .map(result => result.reason?.message ?? String(result.reason));
+
+          if (failureMessages.length > 0) {
+            console.warn('ProfileScreen partial load failures:', failureMessages);
+          }
+
+          const derivedStats = deriveStatsFromSessions(sessionRows);
           setDisplayName(profile.display_name || profile.email || 'Player Profile');
           setStats({
-            sessions: s.sessions_count ?? 0,
-            hours: `${Math.round((s.hours_total ?? 0) * 10) / 10}h`,
-            avgRating: s.avg_rating ? String(s.avg_rating) : '-',
-            streak: `${s.streak_days ?? 0}d`,
+            sessions: derivedStats.sessions || statsRow?.sessions_count || 0,
+            hours: derivedStats.sessions ? derivedStats.hours : `${Math.round((statsRow?.hours_total ?? 0) * 10) / 10}h`,
+            avgRating: derivedStats.avgRating !== '-' ? derivedStats.avgRating : (statsRow?.avg_rating ? Number(statsRow.avg_rating).toFixed(1) : '-'),
+            streak: derivedStats.sessions ? derivedStats.streak : `${statsRow?.streak_days ?? 0}d`,
           });
-          setSessions(sessionRows.slice(0, 4));
+          setSessions(sessionRows);
           setExpenses(expenseRows);
           setSchedule((scheduleRows.data ?? []).slice(0, 5));
-        } catch {
-          // keep defaults
+        } catch (error: any) {
+          console.warn('ProfileScreen load failed:', error);
         } finally {
-          if (mounted) setLoading(false);
+          refreshInFlightRef.current = false;
+          if (active && showLoader) setLoading(false);
         }
-      })();
+      };
+
+      loadProfileData(true);
       return () => {
-        mounted = false;
+        active = false;
       };
     }, [])
   );
 
+  const recentSessions = useMemo(() => sessions.slice(0, 4), [sessions]);
+
   const monthlyBars = useMemo(() => {
     const months = Array.from({ length: 6 }, (_, idx) => {
       const dt = new Date();
+      dt.setDate(1);
       dt.setMonth(dt.getMonth() - (5 - idx));
       return dt;
     });
-    return months.map(month => {
+    return months.map((month, idx) => {
       const count = sessions.filter(sess => {
         const d = new Date(sess.occurred_at);
         return d.getFullYear() === month.getFullYear() && d.getMonth() === month.getMonth();
       }).length;
-      return { month: month.toLocaleDateString(undefined, { month: 'short' }), h: Math.max(18, count * 18), active: false };
+      return {
+        id: `month-${idx}`,
+        month: month.toLocaleDateString(undefined, { month: 'short' }),
+        count,
+        h: count === 0 ? 14 : Math.min(96, 20 + count * 18),
+      };
     });
+  }, [sessions]);
+
+  const weeklySummary = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - 6);
+    const weekRows = sessions.filter(sess => new Date(sess.occurred_at) >= start);
+    const totalMinutes = weekRows.reduce((sum, row) => sum + (row.duration_minutes ?? 0), 0);
+    return {
+      sessions: weekRows.length,
+      hours: Math.round((totalMinutes / 60) * 10) / 10,
+    };
   }, [sessions]);
 
   const spendRows = useMemo(() => {
@@ -169,7 +247,7 @@ export const ProfileScreen = () => {
                 </View>
               </View>
             ) : null}
-            <Text style={s.profileDesc}>Based on {stats.sessions} logged sessions</Text>
+            <Text style={s.profileDesc}>Built from {stats.sessions} logged sessions</Text>
             {myId ? (
               <Text style={s.idHint}>Share this ID so teammates can add you.</Text>
             ) : null}
@@ -199,14 +277,19 @@ export const ProfileScreen = () => {
 
         <Text style={s.sectionTitle}>SESSIONS PER MONTH</Text>
         <View style={s.card}>
-          <View style={s.chartContainer}>
-            {monthlyBars.map(b => (
-              <View key={b.month} style={s.barWrapper}>
-                <View style={[s.barFill, { height: b.h, backgroundColor: C.accent }]} />
-                <Text style={s.barLabel}>{b.month}</Text>
-              </View>
-            ))}
-          </View>
+          {sessions.length === 0 ? (
+            <Text style={s.emptyText}>Log a session to start your monthly trend.</Text>
+          ) : (
+            <View style={s.chartContainer}>
+              {monthlyBars.map(b => (
+                <View key={b.id} style={s.barWrapper}>
+                  <Text style={s.barValue}>{b.count}</Text>
+                  <View style={[s.barFill, { height: b.h, backgroundColor: b.count > 0 ? C.accent : 'rgba(148,163,184,0.18)' }]} />
+                  <Text style={s.barLabel}>{b.month}</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         <View style={s.injuryCard}>
@@ -215,7 +298,11 @@ export const ProfileScreen = () => {
             <View style={s.injuryIcon}><Activity size={18} color={C.warn} /></View>
             <View style={s.injuryTextWrap}>
               <Text style={s.injuryTitle}>Weekly activity</Text>
-              <Text style={s.injuryDesc}>{sessions.length} recent sessions loaded.</Text>
+              <Text style={s.injuryDesc}>
+                {weeklySummary.sessions === 0
+                  ? 'No sessions logged in the last 7 days.'
+                  : `${weeklySummary.sessions} sessions logged over ${weeklySummary.hours}h in the last 7 days.`}
+              </Text>
             </View>
           </View>
         </View>
@@ -227,10 +314,10 @@ export const ProfileScreen = () => {
 
         <Text style={s.sectionTitle}>RECENT SESSIONS</Text>
         <View style={s.listCard}>
-          {sessions.length === 0 ? (
+          {recentSessions.length === 0 ? (
             <Text style={s.emptyText}>No sessions yet.</Text>
           ) : (
-            sessions.map((sess, idx) => {
+            recentSessions.map((sess, idx) => {
               const d = new Date(sess.occurred_at);
               const dateLabel = `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} • ${sess.duration_minutes} min`;
               return (
@@ -239,7 +326,7 @@ export const ProfileScreen = () => {
                   title={sess.title}
                   date={dateLabel}
                   stars={sess.rating ?? 0}
-                  isLast={idx === sessions.length - 1}
+                  isLast={idx === recentSessions.length - 1}
                 />
               );
             })
@@ -356,6 +443,7 @@ const s = StyleSheet.create({
   scheduleCard: { backgroundColor: C.card, marginHorizontal: 20, borderRadius: 16, borderWidth: 1, borderColor: C.border, overflow: 'hidden', marginBottom: 8, padding: 0 },
   chartContainer: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 120 },
   barWrapper: { alignItems: 'center', width: 40, justifyContent: 'flex-end' },
+  barValue: { color: C.text, fontSize: 11, fontWeight: '700', marginBottom: 6 },
   barFill: { width: 20, borderRadius: 10, marginBottom: 8 },
   barLabel: { color: C.neutral, fontSize: 10 },
   injuryCard: { flexDirection: 'row', backgroundColor: C.card, marginHorizontal: 20, marginBottom: 12, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: C.border },

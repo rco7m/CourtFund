@@ -347,12 +347,15 @@ export const WalletScreen = () => {
               const sub = `${dt.toLocaleDateString()} • ${dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
               const icon = tx.type === 'gear' ? ShoppingBag : tx.type === 'booking' ? Layers : CreditCard;
               const title = tx.note || (tx.type === 'gear' ? 'Gear' : tx.type === 'booking' ? 'Booking' : 'Expense');
+              const detail = tx.split_id
+                ? `${sub} • ${tx.split_role === 'host' ? 'Your split share' : 'Assigned split share'}`
+                : sub;
               return (
                 <TxItem
                   key={tx.id}
                   icon={icon}
                   title={title}
-                  sub={sub}
+                  sub={detail}
                   amount={`-$${Number(tx.amount).toFixed(2)}`}
                   isLast={idx === Math.min(4, expenses.length - 1)}
                 />

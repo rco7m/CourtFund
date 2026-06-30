@@ -296,9 +296,6 @@ export const FriendsScreen = () => {
                   <Text style={s.friendName}>{f.name}</Text>
                   <Text style={s.friendStatus}>{f.status}</Text>
                 </View>
-                <TouchableOpacity style={s.msgBtn} disabled>
-                  <Text style={s.msgBtnText}>Message</Text>
-                </TouchableOpacity>
               </View>
             ))
           )}

@@ -17,9 +17,14 @@ export type SessionInsightRow = {
 };
 
 export async function listMySessions() {
+  const { data: userRes } = await supabase.auth.getUser();
+  const userId = userRes.user?.id;
+  if (!userId) return [];
+
   const { data, error } = await supabase
     .from('sessions')
     .select('id,user_id,title,occurred_at,duration_minutes,rating,notes')
+    .eq('user_id', userId)
     .order('occurred_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as SessionRow[];

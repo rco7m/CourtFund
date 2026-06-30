@@ -24,17 +24,19 @@ export async function listMyNotifications(limit = 5) {
   const userId = userRes.user?.id;
   if (!userId) return [];
 
-  const [sessionsRes, expensesRes, scheduleRes] = await Promise.all([
+  const [sessionsRes, expensesRes, scheduleRes, appNotifRes] = await Promise.all([
     supabase.from('sessions').select('id,title,occurred_at').eq('user_id', userId).order('occurred_at', { ascending: false }).limit(limit),
     supabase.from('expenses').select('id,type,amount,note,occurred_at').eq('user_id', userId).order('occurred_at', { ascending: false }).limit(limit),
     supabase.from('schedule_events').select('id,title,start_time,tag').eq('user_id', userId).order('start_time', { ascending: false }).limit(limit),
+    supabase.from('app_notifications').select('id,kind,title,body,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),
   ]);
 
   if (sessionsRes.error) throw sessionsRes.error;
   if (expensesRes.error) throw expensesRes.error;
   if (scheduleRes.error) throw scheduleRes.error;
+  if (appNotifRes.error) throw appNotifRes.error;
 
-  const items: AppNotification[] = [];
+  const items: Array<AppNotification & { createdAt: string }> = [];
 
   for (const s of sessionsRes.data ?? []) {
     items.push({
@@ -43,6 +45,7 @@ export async function listMyNotifications(limit = 5) {
       desc: s.title,
       time: formatRelativeTime(s.occurred_at),
       icon: '🏸',
+      createdAt: s.occurred_at,
     });
   }
 
@@ -53,6 +56,7 @@ export async function listMyNotifications(limit = 5) {
       desc: `${e.note || e.type} • $${Number(e.amount).toFixed(2)}`,
       time: formatRelativeTime(e.occurred_at),
       icon: '💰',
+      createdAt: e.occurred_at,
     });
   }
 
@@ -63,8 +67,23 @@ export async function listMyNotifications(limit = 5) {
       desc: ev.title,
       time: formatRelativeTime(ev.start_time),
       icon: '📅',
+      createdAt: ev.start_time,
     });
   }
 
-  return items.slice(0, limit);
+  for (const notif of appNotifRes.data ?? []) {
+    items.push({
+      id: `app-${notif.id}`,
+      title: notif.title,
+      desc: notif.body,
+      time: formatRelativeTime(notif.created_at),
+      icon: notif.kind === 'cost_split' ? '🧾' : '🔔',
+      createdAt: notif.created_at,
+    });
+  }
+
+  return items
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, limit)
+    .map(({ createdAt, ...item }) => item);
 }

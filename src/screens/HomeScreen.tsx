@@ -25,19 +25,9 @@ const FONTS = { headline: 'Lexend', body: 'Inter' };
 const { width } = Dimensions.get('window');
 
 const AnimatedChart = ({ expenses }: { expenses: any[] }) => {
-  const [expanded, setExpanded] = useState(false);
-  const anim = useRef(new Animated.Value(0)).current;
+  const expanded = true;
 
-  const toggle = () => {
-    Animated.spring(anim, {
-      toValue: expanded ? 0 : 1,
-      useNativeDriver: false,
-      tension: 60, friction: 10,
-    }).start();
-    setExpanded(e => !e);
-  };
-
-  const chartH = anim.interpolate({ inputRange: [0, 1], outputRange: [64, 140] });
+  const chartH = 150;
   const chartW = width - 80;
 
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -67,7 +57,7 @@ const AnimatedChart = ({ expenses }: { expenses: any[] }) => {
   const padX = 24;
   const pts = series.map((p, idx) => {
     const x = padX + (idx / (series.length - 1)) * (chartW - padX * 2);
-    const y = 140 - (Math.max(0, p.value) / maxV) * 120;
+    const y = 140 - (Math.max(0, p.value) / maxV) * 115;
     return { x, y };
   });
 
@@ -79,9 +69,9 @@ const AnimatedChart = ({ expenses }: { expenses: any[] }) => {
     : '';
 
   return (
-    <TouchableOpacity onPress={toggle} activeOpacity={0.9}>
-      <Animated.View style={[s.chartClip, { height: chartH }]}>
-        <Svg width={chartW} height={140}>
+    <View>
+      <View style={[s.chartClip, { height: chartH }]}>
+        <Svg width={chartW} height={160}>
           <Defs>
             <LinearGradient id="g" x1="0" y1="0" x2="0" y2="1">
               <Stop offset="0" stopColor={C.accent} stopOpacity="0.2" />
@@ -104,7 +94,7 @@ const AnimatedChart = ({ expenses }: { expenses: any[] }) => {
             const x = padX + (idx / (series.length - 1)) * (chartW - padX * 2);
             const dateLabel = `${p.date.getMonth() + 1}/${p.date.getDate()}`;
             return (
-              <SvgText key={`date-${idx}`} x={x} y={135} fill={C.neutral} fontSize={9} fontWeight="600" textAnchor="middle">
+              <SvgText key={`date-${idx}`} x={x} y={150} fill={C.neutral} fontSize={9} fontWeight="600" textAnchor="middle">
                 {dateLabel}
               </SvgText>
             );
@@ -122,9 +112,8 @@ const AnimatedChart = ({ expenses }: { expenses: any[] }) => {
             />
           ) : null}
         </Svg>
-      </Animated.View>
-      <Text style={s.chartHint}>{expanded ? 'Tap to collapse' : 'Tap chart to expand'}</Text>
-    </TouchableOpacity>
+      </View>
+    </View>
   );
 };
 
@@ -264,6 +253,9 @@ export const HomeScreen = () => {
 
     const recentExpense = expenses[0];
     if (recentExpense) {
+      const expenseLabel = recentExpense.split_id
+        ? `${recentExpense.note || recentExpense.type} (split share)`
+        : (recentExpense.note || recentExpense.type);
       items.push({
         key: 'expense',
         title: 'Recent Spend Update',
@@ -271,7 +263,7 @@ export const HomeScreen = () => {
         desc: (
           <>
             Latest expense: <Text style={s.alertDescAccent}>-${Number(recentExpense.amount).toFixed(2)}</Text>{' '}
-            for {recentExpense.note || recentExpense.type}.
+            for {expenseLabel}.
           </>
         ),
       });
@@ -353,7 +345,9 @@ export const HomeScreen = () => {
             ) : (
               expenses.slice(0, 4).map((tx: any, idx: number) => {
                 const dt = new Date(tx.occurred_at);
-                const subtitle = dt.toLocaleDateString();
+                const subtitle = tx.split_id
+                  ? `${dt.toLocaleDateString()} • ${tx.split_role === 'host' ? 'Your split share' : 'Added by teammate'}`
+                  : dt.toLocaleDateString();
                 const amount = `-$${Number(tx.amount).toFixed(2)}`;
                 return (
                   <ExpenseItem

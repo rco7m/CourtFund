@@ -6,6 +6,7 @@ import { LogGearModal } from '../components/LogGearModal';
 import { AppHeader } from '../components/AppHeader';
 import { createGearItem, listMyGear } from '../data/gear';
 import { createExpense } from '../data/expenses';
+import { createCostSplit } from '../data/splits';
 import { supabase } from '../lib/supabase';
 
 const C = {
@@ -120,23 +121,19 @@ export const GearScreen = () => {
           const nameToSave = data.name || 'Gear Item';
           const amount = Number.parseFloat(data.price || '0');
           const qty = Number.parseInt(data.quantity || '1', 10) || 1;
-          const splitCount = data.splitWith?.length ? data.splitWith.length + 1 : 1;
-          const myCost = amount / splitCount;
+          const splitParticipants = data.splitParticipants ?? [];
 
           const existing = gearItems.find(g => g.name.toLowerCase() === nameToSave.toLowerCase());
+          const purchaseTitle = existing ? `Restocked Gear: ${existing.name}` : `Gear: ${nameToSave}`;
 
           if (existing) {
             const newQty = (existing.quantity || 0) + qty;
-            const newCost = (existing.cost || 0) + (Number.isFinite(myCost) ? myCost : 0);
+            const newCost = (existing.cost || 0) + (Number.isFinite(amount) ? amount : 0);
             
             await supabase.from('gear_items').update({
                quantity: newQty,
                cost: newCost
             }).eq('id', existing.id);
-
-            if (Number.isFinite(myCost) && myCost > 0) {
-              await createExpense({ type: 'gear', amount: myCost, note: `Restocked Gear: ${existing.name}` });
-            }
           } else {
             const created = await createGearItem({
               name: nameToSave,
@@ -145,13 +142,23 @@ export const GearScreen = () => {
               quantity: qty,
               unit: 'pcs',
               purchase_date: new Date().toISOString().slice(0, 10),
-              cost: Number.isFinite(myCost) ? myCost : null,
+              cost: Number.isFinite(amount) ? amount : null,
               status: 'active',
-              notes: data.splitWith?.length ? `Split with ${data.splitWith.length} friend(s)` : null,
+              notes: splitParticipants.length ? `Split with ${splitParticipants.length} teammate(s)` : null,
             });
-            if (Number.isFinite(myCost) && myCost > 0) {
-              await createExpense({ type: 'gear', amount: myCost, note: `Gear: ${created.name}` });
-            }
+          }
+
+          if (splitParticipants.length > 0 && Number.isFinite(amount) && amount > 0) {
+            await createCostSplit({
+              sourceType: 'gear',
+              sourceRecordId: null,
+              expenseType: 'gear',
+              title: purchaseTitle,
+              totalAmount: amount,
+              participants: splitParticipants,
+            });
+          } else if (Number.isFinite(amount) && amount > 0) {
+            await createExpense({ type: 'gear', amount, note: purchaseTitle });
           }
           await load();
         }} 

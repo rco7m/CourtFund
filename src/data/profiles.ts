@@ -16,9 +16,9 @@ export type UserStats = {
 };
 
 export async function getMyProfile() {
-  const { data, error } = await supabase.from('profiles').select('id,email,display_name,avatar_url').single();
+  const { data, error } = await supabase.from('profiles').select('id,email,display_name,avatar_url').maybeSingle();
   if (error) throw error;
-  return data as Profile;
+  return (data || { id: '', email: null, display_name: null, avatar_url: null }) as Profile;
 }
 
 export async function updateMyProfile(update: Partial<Pick<Profile, 'display_name' | 'avatar_url'>>) {
@@ -37,10 +37,15 @@ export async function getMyStats() {
 }
 
 export async function recomputeMyStats() {
+  const { data: user } = await supabase.auth.getUser();
+  const userId = user.user?.id;
+  if (!userId) return;
+
   // Recompute from sessions and store into `user_stats` (client-side fallback).
   const { data: sessions, error: sessionsError } = await supabase
     .from('sessions')
     .select('duration_minutes,rating,occurred_at')
+    .eq('user_id', userId)
     .order('occurred_at', { ascending: false });
   if (sessionsError) throw sessionsError;
 
@@ -68,9 +73,6 @@ export async function recomputeMyStats() {
     cursor.setDate(cursor.getDate() - 1);
   }
 
-  const { data: user } = await supabase.auth.getUser();
-  const userId = user.user?.id;
-  if (!userId) return;
 
   const { error } = await supabase.from('user_stats').upsert({
     user_id: userId,

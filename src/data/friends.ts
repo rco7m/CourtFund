@@ -15,7 +15,10 @@ export type FriendProfile = {
   email: string | null;
 };
 
-export type FriendListItem = FriendRow & {
+export type FriendListItem = Omit<FriendRow, 'id'> & {
+  friendship_id: string;
+  id: string;
+  teammate_user_id: string;
   name: string;
   initial: string;
 };
@@ -121,7 +124,14 @@ export async function listMyFriendProfiles(opts?: { status?: Array<FriendRow['st
     const p = map.get(otherId);
     const name = (p?.display_name || p?.email || 'Teammate') as string;
     return {
-      ...row,
+      friendship_id: row.id,
+      id: otherId,
+      teammate_user_id: otherId,
+      user_id: row.user_id,
+      friend_user_id: row.friend_user_id,
+      status: row.status,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
       name,
       initial: name.slice(0, 1).toUpperCase(),
     } as FriendListItem;

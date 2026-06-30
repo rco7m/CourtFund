@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Image } from 'react-native';
 import { Bell, X, User } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { listMyNotifications } from '../data/notifications';
 
@@ -18,7 +18,7 @@ export const AppHeader = () => {
   const [showNotif, setShowNotif] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
 
-  useEffect(() => {
+  const loadNotifications = () => {
     let mounted = true;
     listMyNotifications(5)
       .then(rows => {
@@ -30,7 +30,17 @@ export const AppHeader = () => {
     return () => {
       mounted = false;
     };
+  };
+
+  useEffect(() => {
+    return loadNotifications();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      return loadNotifications();
+    }, [])
+  );
 
   return (
     <>
@@ -45,7 +55,7 @@ export const AppHeader = () => {
         <View style={s.flexSpacer} />
         <TouchableOpacity style={s.iconBtn} onPress={() => setShowNotif(true)}>
           <Bell size={18} color={C.neutral} />
-          <View style={s.notifDot} />
+          {notifications.length > 0 ? <View style={s.notifDot} /> : null}
         </TouchableOpacity>
         <TouchableOpacity
           style={s.profileBtn}

@@ -8,12 +8,15 @@ export type ExpenseRow = {
   currency: string;
   occurred_at: string;
   note: string | null;
+  split_id: string | null;
+  split_role: string | null;
+  created_by: string | null;
 };
 
 export async function listMyExpenses(limit = 50) {
   const { data, error } = await supabase
     .from('expenses')
-    .select('id,user_id,type,amount,currency,occurred_at,note')
+    .select('id,user_id,type,amount,currency,occurred_at,note,split_id,split_role,created_by')
     .order('occurred_at', { ascending: false })
     .limit(limit);
   if (error) throw error;
@@ -38,7 +41,7 @@ export async function createExpense(input: {
     currency: input.currency ?? 'USD',
     occurred_at: input.occurred_at ?? new Date().toISOString(),
     note: input.note ?? null,
+    created_by: userId,
   });
   if (error) throw error;
 }
-
