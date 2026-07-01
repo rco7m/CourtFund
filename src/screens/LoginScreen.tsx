@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   Dimensions, KeyboardAvoidingView, Platform, ScrollView,
-  Animated, StatusBar, Image,
+  Animated, StatusBar, Image, Linking,
 } from 'react-native';
 import Svg, { Line } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
@@ -10,6 +10,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react-native';
 import { useAuth } from '../providers/AuthProvider';
+import { SUPPORT_EMAIL } from '../constants/support';
 
 const { width, height } = Dimensions.get('window');
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -190,9 +191,12 @@ export const LoginScreen = () => {
           <View style={styles.privacyContainer}>
             <Text style={styles.privacyText}>
               By continuing, you accept our{' '}
-              <Text style={styles.privacyLink}>Privacy Policy</Text>
+              <Text style={styles.privacyLink} onPress={() => Linking.openURL('https://sites.google.com/view/sportfund-privacy-policy/home')}>Privacy Policy</Text>
               {' '}and{' '}
-              <Text style={styles.privacyLink}>Terms of Service</Text>
+              <Text style={styles.privacyLink} onPress={() => Linking.openURL('https://sites.google.com/view/sportfund-terms/home')}>Terms of Service</Text>
+            </Text>
+            <Text style={styles.supportText}>
+              Need help? Contact support at <Text style={styles.supportEmail}>{SUPPORT_EMAIL}</Text>
             </Text>
           </View>
         </ScrollView>
@@ -367,6 +371,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     fontWeight: '400',
+  },
+  supportText: {
+    marginTop: 10,
+    fontSize: 12,
+    color: C.neutral,
+    textAlign: 'center',
+    lineHeight: 18,
+    fontWeight: '400',
+  },
+  supportEmail: {
+    color: C.accent,
+    fontWeight: '700',
   },
   privacyLink: {
     color: C.accent,

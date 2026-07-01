@@ -11,6 +11,7 @@ import { listMyExpenses } from '../data/expenses';
 import { supabase } from '../lib/supabase';
 import { trySetClipboardString } from '../lib/clipboard';
 import { requestAccountDeletion } from '../data/account';
+import { SUPPORT_EMAIL } from '../constants/support';
 
 const C = {
   bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
@@ -354,12 +355,17 @@ export const ProfileScreen = () => {
           </View>
         </View>
 
+        <View style={s.supportCard}>
+          <Text style={s.supportTitle}>Support</Text>
+          <Text style={s.supportText}>For account, billing, or app help, contact {SUPPORT_EMAIL}</Text>
+        </View>
+
         <TouchableOpacity
           style={s.deleteCta}
           onPress={() => {
             Alert.alert(
               'Delete account?',
-              'This will request account deletion. Your data may be removed and cannot be recovered.',
+              `This will request account deletion. Your data may be removed and cannot be recovered. For help, contact ${SUPPORT_EMAIL}.`,
               [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -469,5 +475,8 @@ const s = StyleSheet.create({
   totalBox: { alignItems: 'flex-end', marginLeft: 20 },
   totalValue: { fontSize: 22, fontWeight: '800', color: C.accent, marginBottom: 2 },
   totalLabel: { fontSize: 11, color: C.neutral },
+  supportCard: { marginHorizontal: 20, marginBottom: 8, backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 16 },
+  supportTitle: { color: C.text, fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  supportText: { color: C.neutral, fontSize: 12, lineHeight: 18 },
   emptyText: { color: C.neutral, fontSize: 13 },
 });

@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   Dimensions, KeyboardAvoidingView, Platform, ScrollView,
-  Animated, StatusBar, Image,
+  Animated, StatusBar, Image, Linking,
 } from 'react-native';
 import Svg, { Line } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
@@ -10,6 +10,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { Eye, EyeOff, Mail, Lock, User, ChevronLeft } from 'lucide-react-native';
 import { useAuth } from '../providers/AuthProvider';
+import { SUPPORT_EMAIL } from '../constants/support';
 
 const { width, height } = Dimensions.get('window');
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Signup'>;
@@ -187,9 +188,12 @@ export const SignupScreen = () => {
           <View style={s.privacyContainer}>
             <Text style={s.privacyText}>
               By continuing, you accept our{' '}
-              <Text style={s.privacyLink}>Privacy Policy</Text>
+              <Text style={s.privacyLink} onPress={() => Linking.openURL('https://sites.google.com/view/sportfund-privacy-policy/home')}>Privacy Policy</Text>
               {' '}and{' '}
-              <Text style={s.privacyLink}>Terms of Service</Text>
+              <Text style={s.privacyLink} onPress={() => Linking.openURL('https://sites.google.com/view/sportfund-terms/home')}>Terms of Service</Text>
+            </Text>
+            <Text style={s.supportText}>
+              Need help? Contact support at <Text style={s.supportEmail}>{SUPPORT_EMAIL}</Text>
             </Text>
           </View>
         </ScrollView>
@@ -228,5 +232,7 @@ const s = StyleSheet.create({
   loginLink:{fontSize:14,color:C.accent,fontWeight:'700'},
   privacyContainer:{marginTop:24,paddingHorizontal:8,alignItems:'center'},
   privacyText:{fontSize:12,color:C.neutral,textAlign:'center',lineHeight:18},
+  supportText:{marginTop:10,fontSize:12,color:C.neutral,textAlign:'center',lineHeight:18},
+  supportEmail:{color:C.accent,fontWeight:'700'},
   privacyLink:{color:C.accent,fontWeight:'600',textDecorationLine:'underline'},
 });

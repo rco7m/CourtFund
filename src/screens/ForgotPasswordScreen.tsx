@@ -19,6 +19,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { Mail, ChevronLeft, SendHorizonal } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
+import { SUPPORT_EMAIL } from '../constants/support';
 
 const { width, height } = Dimensions.get('window');
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'ForgotPassword'>;
@@ -188,6 +189,9 @@ export const ForgotPasswordScreen = () => {
                     <Text style={styles.resendLink}>try again</Text>
                   </TouchableOpacity>
                 </View>
+                <Text style={styles.supportText}>
+                  Still stuck? Contact support at <Text style={styles.supportEmail}>{SUPPORT_EMAIL}</Text>
+                </Text>
               </Animated.View>
             )}
 
@@ -203,6 +207,9 @@ export const ForgotPasswordScreen = () => {
               <Text style={styles.privacyLink}>Privacy Policy</Text>
               {' '}and{' '}
               <Text style={styles.privacyLink}>Terms of Service</Text>
+            </Text>
+            <Text style={styles.supportText}>
+              Need help? Contact support at <Text style={styles.supportEmail}>{SUPPORT_EMAIL}</Text>
             </Text>
           </View>
         </ScrollView>
@@ -390,6 +397,17 @@ const styles = StyleSheet.create({
   successHintText: {
     color: C.neutral,
     fontSize: 13,
+  },
+  supportText: {
+    marginTop: 12,
+    color: C.neutral,
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  supportEmail: {
+    color: C.accent,
+    fontWeight: '700',
   },
   resendLink: {
     color: C.accent,
