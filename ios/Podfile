@@ -10,6 +10,7 @@ require_relative '../node_modules/react-native-permissions/scripts/setup'
 
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
+ENV['RCT_USE_PREBUILT_RNCORE'] = '0'
 
 setup_permissions([
   'LocationWhenInUse',
@@ -39,32 +40,96 @@ target 'SportFund' do
       # :ccache_enabled => true
     )
 
-    rctswiftui_modulemap_build = '${PODS_CONFIGURATION_BUILD_DIR}/RCTSwiftUI/RCTSwiftUI.modulemap'
-    rctswiftui_modulemap_public = '${PODS_ROOT}/Headers/Public/RCTSwiftUI/RCTSwiftUI.modulemap'
+    stable_modulemaps = [
+      {
+        build: '${PODS_CONFIGURATION_BUILD_DIR}/AsyncStorage/AsyncStorage.modulemap',
+        public: '${PODS_ROOT}/Headers/Public/AsyncStorage/AsyncStorage.modulemap',
+        public_headers_dir: File.join(__dir__, 'Pods', 'Headers', 'Public', 'AsyncStorage'),
+        support_dir: File.join(__dir__, 'Pods', 'Target Support Files', 'AsyncStorage'),
+        modulemap: 'AsyncStorage.modulemap',
+        umbrella: 'AsyncStorage-umbrella.h',
+      },
+      {
+        build: '${PODS_CONFIGURATION_BUILD_DIR}/RCTSwiftUI/RCTSwiftUI.modulemap',
+        public: '${PODS_ROOT}/Headers/Public/RCTSwiftUI/RCTSwiftUI.modulemap',
+        public_headers_dir: File.join(__dir__, 'Pods', 'Headers', 'Public', 'RCTSwiftUI'),
+        support_dir: File.join(__dir__, 'Pods', 'Target Support Files', 'RCTSwiftUI'),
+        modulemap: 'RCTSwiftUI.modulemap',
+        umbrella: 'RCTSwiftUI-umbrella.h',
+      },
+      {
+        build: '${PODS_CONFIGURATION_BUILD_DIR}/RNScreens/RNScreens.modulemap',
+        public: '${PODS_ROOT}/Headers/Public/RNScreens/RNScreens.modulemap',
+        public_headers_dir: File.join(__dir__, 'Pods', 'Headers', 'Public', 'RNScreens'),
+        support_dir: File.join(__dir__, 'Pods', 'Target Support Files', 'RNScreens'),
+        modulemap: 'RNScreens.modulemap',
+        umbrella: 'RNScreens-umbrella.h',
+      },
+      {
+        build: '${PODS_CONFIGURATION_BUILD_DIR}/react-native-geolocation-service/react_native_geolocation_service.modulemap',
+        public: '${PODS_ROOT}/Headers/Public/react_native_geolocation_service/react-native-geolocation-service.modulemap',
+        public_headers_dir: File.join(__dir__, 'Pods', 'Headers', 'Public', 'react_native_geolocation_service'),
+        support_dir: File.join(__dir__, 'Pods', 'Target Support Files', 'react-native-geolocation-service'),
+        modulemap: 'react-native-geolocation-service.modulemap',
+        umbrella: 'react-native-geolocation-service-umbrella.h',
+      },
+    ]
 
     Dir.glob(File.join(__dir__, 'Pods', 'Target Support Files', '**', '*.xcconfig')).each do |xcconfig_path|
       contents = File.read(xcconfig_path)
-      next unless contents.include?(rctswiftui_modulemap_build)
+      updated_contents = contents.dup
 
-      File.write(
-        xcconfig_path,
-        contents.gsub(rctswiftui_modulemap_build, rctswiftui_modulemap_public)
+      stable_modulemaps.each do |modulemap|
+        updated_contents.gsub!(modulemap[:build], modulemap[:public])
+      end
+
+      next if updated_contents == contents
+
+      File.write(xcconfig_path, updated_contents)
+    end
+
+    stable_modulemaps.each do |modulemap|
+      FileUtils.mkdir_p(modulemap[:public_headers_dir])
+      FileUtils.rm_f(File.join(modulemap[:public_headers_dir], modulemap[:modulemap]))
+      FileUtils.rm_f(File.join(modulemap[:public_headers_dir], modulemap[:umbrella]))
+      FileUtils.cp(
+        File.join(modulemap[:support_dir], modulemap[:modulemap]),
+        File.join(modulemap[:public_headers_dir], modulemap[:modulemap])
+      )
+      FileUtils.cp(
+        File.join(modulemap[:support_dir], modulemap[:umbrella]),
+        File.join(modulemap[:public_headers_dir], modulemap[:umbrella])
       )
     end
 
-    rctswiftui_public_headers_dir = File.join(__dir__, 'Pods', 'Headers', 'Public', 'RCTSwiftUI')
-    rctswiftui_support_dir = File.join(__dir__, 'Pods', 'Target Support Files', 'RCTSwiftUI')
-    FileUtils.mkdir_p(rctswiftui_public_headers_dir)
-    FileUtils.rm_f(File.join(rctswiftui_public_headers_dir, 'RCTSwiftUI.modulemap'))
-    FileUtils.rm_f(File.join(rctswiftui_public_headers_dir, 'RCTSwiftUI-umbrella.h'))
-    FileUtils.cp(
-      File.join(rctswiftui_support_dir, 'RCTSwiftUI.modulemap'),
-      File.join(rctswiftui_public_headers_dir, 'RCTSwiftUI.modulemap')
+    react_native_version = JSON.parse(
+      File.read(File.join(__dir__, '..', 'node_modules', 'react-native', 'package.json'))
+    )['version']
+    rncore_artifacts_dir = File.join(__dir__, 'Pods', 'ReactNativeCore-artifacts')
+    rncore_debug_tarball = File.join(rncore_artifacts_dir, "reactnative-core-#{react_native_version}-debug.tar.gz")
+    rncore_release_tarball = File.join(rncore_artifacts_dir, "reactnative-core-#{react_native_version}-release.tar.gz")
+    rncore_debug_tarball_url = "https://repo1.maven.org/maven2/com/facebook/react/react-native-artifacts/#{react_native_version}/react-native-artifacts-#{react_native_version}-reactnative-core-debug.tar.gz"
+    rncore_prebuilt_dir = File.join(__dir__, 'Pods', 'React-Core-prebuilt')
+    rncore_simulator_binary = File.join(
+      rncore_prebuilt_dir,
+      'React.xcframework',
+      'ios-arm64_x86_64-simulator',
+      'React.framework',
+      'React'
     )
-    FileUtils.cp(
-      File.join(rctswiftui_support_dir, 'RCTSwiftUI-umbrella.h'),
-      File.join(rctswiftui_public_headers_dir, 'RCTSwiftUI-umbrella.h')
-    )
+
+    if !File.exist?(rncore_simulator_binary) && File.exist?(rncore_release_tarball)
+      FileUtils.mkdir_p(rncore_artifacts_dir)
+      unless File.exist?(rncore_debug_tarball)
+        system('curl', '-L', rncore_debug_tarball_url, '-o', rncore_debug_tarball) ||
+          raise('Failed to download React-Core-prebuilt debug tarball')
+      end
+
+      FileUtils.rm_rf(rncore_prebuilt_dir)
+      FileUtils.mkdir_p(rncore_prebuilt_dir)
+      system('tar', '-xf', rncore_debug_tarball, '-C', rncore_prebuilt_dir) || raise('Failed to extract React-Core-prebuilt debug tarball')
+      File.write(File.join(rncore_prebuilt_dir, '.last_build_configuration'), 'Debug')
+    end
 
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |build_config|

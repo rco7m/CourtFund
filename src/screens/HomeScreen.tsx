@@ -24,33 +24,40 @@ const C = {
 const FONTS = { headline: 'Lexend', body: 'Inter' };
 const { width } = Dimensions.get('window');
 
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const addDays = (d: Date, days: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
+const ymdKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+const formatAxisDate = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+const formatMoney = (value: number) => `$${value.toFixed(2)}`;
+
+const buildDailySpendingSeries = (rows: any[], days: number) => {
+  const totals = new Map<string, number>();
+  for (const row of rows ?? []) {
+    const when = new Date(row.occurred_at);
+    if (Number.isNaN(when.getTime())) continue;
+    const key = ymdKey(startOfDay(when));
+    totals.set(key, (totals.get(key) ?? 0) + (Number(row.amount) || 0));
+  }
+
+  const today = startOfDay(new Date());
+  const first = addDays(today, -(days - 1));
+  const out: { date: Date; value: number }[] = [];
+  for (let i = 0; i < days; i += 1) {
+    const dt = addDays(first, i);
+    out.push({ date: dt, value: totals.get(ymdKey(dt)) ?? 0 });
+  }
+  return out;
+};
+
 const AnimatedChart = ({ expenses }: { expenses: any[] }) => {
   const expanded = true;
 
   const chartH = 150;
   const chartW = width - 80;
 
-  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const addDays = (d: Date, days: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
-  const ymdKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
   const series = useMemo(() => {
-    const days = 8;
-    const totals = new Map<string, number>();
-    for (const r of expenses ?? []) {
-      const when = new Date(r.occurred_at);
-      const k = ymdKey(startOfDay(when));
-      totals.set(k, (totals.get(k) ?? 0) + (Number(r.amount) || 0));
-    }
-
-    const today = startOfDay(new Date());
-    const first = addDays(today, -(days - 1));
-    const out: { date: Date; value: number }[] = [];
-    for (let i = 0; i < days; i += 1) {
-      const dt = addDays(first, i);
-      out.push({ date: dt, value: totals.get(ymdKey(dt)) ?? 0 });
-    }
-    return out;
+    return buildDailySpendingSeries(expenses, 30);
   }, [expenses]);
 
   const maxV = Math.max(1, ...series.map(p => p.value || 0));
@@ -67,6 +74,13 @@ const AnimatedChart = ({ expenses }: { expenses: any[] }) => {
   const areaD = pts.length
     ? `${lineD} L ${pts[pts.length - 1].x} 140 L ${pts[0].x} 140 Z`
     : '';
+  const xTickIdx = Array.from(new Set([
+    0,
+    Math.floor((series.length - 1) * 0.25),
+    Math.floor((series.length - 1) * 0.5),
+    Math.floor((series.length - 1) * 0.75),
+    series.length - 1,
+  ])).filter(idx => idx >= 0 && idx < series.length);
 
   return (
     <View>
@@ -88,17 +102,19 @@ const AnimatedChart = ({ expenses }: { expenses: any[] }) => {
             );
           })}
           
-          {expanded && series.map((p, idx) => {
-            if (idx % 2 !== 0 && idx !== series.length - 1) return null;
-            if (idx === series.length - 2) return null; // Avoid overlapping with the last item
-            const x = padX + (idx / (series.length - 1)) * (chartW - padX * 2);
-            const dateLabel = `${p.date.getMonth() + 1}/${p.date.getDate()}`;
-            return (
-              <SvgText key={`date-${idx}`} x={x} y={150} fill={C.neutral} fontSize={9} fontWeight="600" textAnchor="middle">
-                {dateLabel}
-              </SvgText>
-            );
-          })}
+          {expanded && xTickIdx.map(idx => (
+            <SvgText
+              key={`date-${idx}`}
+              x={pts[idx]?.x ?? 0}
+              y={150}
+              fill={C.neutral}
+              fontSize={9}
+              fontWeight="600"
+              textAnchor="middle"
+            >
+              {formatAxisDate(series[idx].date)}
+            </SvgText>
+          ))}
           {lineD ? (
             <Path
               d={lineD}
@@ -157,7 +173,7 @@ export const HomeScreen = () => {
     let mounted = true;
     setLoading(true);
     Promise.all([
-      listMyExpenses(10),
+      listMyExpenses(200),
       listMySessions(),
       listMyGear(),
       getMyUserStats(),
@@ -184,7 +200,7 @@ export const HomeScreen = () => {
       let mounted = true;
       setLoading(true);
       Promise.all([
-        listMyExpenses(10),
+        listMyExpenses(200),
         listMySessions(),
         listMyGear(),
         getMyUserStats(),
@@ -208,6 +224,27 @@ export const HomeScreen = () => {
   );
 
   const totalSpend = useMemo(() => (expenses ?? []).reduce((acc, e) => acc + (Number(e.amount) || 0), 0), [expenses]);
+  const thisMonthSpend = useMemo(() => {
+    const now = new Date();
+    return (expenses ?? []).reduce((acc, expense) => {
+      const when = new Date(expense.occurred_at);
+      if (Number.isNaN(when.getTime())) return acc;
+      if (when.getFullYear() !== now.getFullYear() || when.getMonth() !== now.getMonth()) return acc;
+      return acc + (Number(expense.amount) || 0);
+    }, 0);
+  }, [expenses]);
+  const avgMonthlySpend = useMemo(() => {
+    const monthlyTotals = new Map<string, number>();
+    for (const expense of expenses ?? []) {
+      const when = new Date(expense.occurred_at);
+      if (Number.isNaN(when.getTime())) continue;
+      const key = monthKey(when);
+      monthlyTotals.set(key, (monthlyTotals.get(key) ?? 0) + (Number(expense.amount) || 0));
+    }
+    if (monthlyTotals.size === 0) return 0;
+    const total = Array.from(monthlyTotals.values()).reduce((sum, value) => sum + value, 0);
+    return total / monthlyTotals.size;
+  }, [expenses]);
   const sessionsThisWeek = useMemo(() => {
     const now = new Date();
     const start = new Date(now);
@@ -293,12 +330,12 @@ export const HomeScreen = () => {
             <View style={s.statsRow}>
               <View>
                 <Text style={s.statLabel}>THIS MONTH</Text>
-                <Text style={s.statValue}>{loading ? '—' : `$${totalSpend.toFixed(2)}`}</Text>
+                <Text style={s.statValue}>{loading ? '—' : formatMoney(thisMonthSpend)}</Text>
               </View>
               <View style={s.statDivider} />
               <View>
                 <Text style={s.statLabel}>AVG MONTHLY</Text>
-                <Text style={s.statValue}>—</Text>
+                <Text style={s.statValue}>{loading ? '—' : formatMoney(avgMonthlySpend)}</Text>
               </View>
             </View>
             {loading ? null : <AnimatedChart expenses={expenses} />}
