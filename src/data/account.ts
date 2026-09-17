@@ -1,14 +1,13 @@
-import { supabase } from '../lib/supabase';
+import { addDoc, collection } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 
 export async function requestAccountDeletion() {
-  const { data: userRes } = await supabase.auth.getUser();
-  const userId = userRes.user?.id;
+  const userId = auth.currentUser?.uid;
   if (!userId) throw new Error('Not signed in');
 
-  const { error } = await supabase.from('account_deletion_requests').insert({
+  await addDoc(collection(db, 'account_deletion_requests'), {
     user_id: userId,
     status: 'pending',
+    created_at: new Date().toISOString(),
   });
-  if (error) throw error;
 }
-

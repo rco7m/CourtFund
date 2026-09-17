@@ -4,7 +4,8 @@ import { UserPlus, X, Check, Search, ArrowLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { acceptFriendRequest, declineFriendRequest, findProfileById, listMyFriends, sendFriendRequestById } from '../data/friends';
-import { supabase } from '../lib/supabase';
+import { collection, documentId, getDocs, query, where } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 
 const C = {
   bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
@@ -122,8 +123,7 @@ export const FriendsScreen = () => {
     setLoading(true);
     try {
       const rows = await listMyFriends();
-      const { data: userRes } = await supabase.auth.getUser();
-      const uid = userRes.user?.id ?? null;
+      const uid = auth.currentUser?.uid ?? null;
       if (!uid) {
         setTeammates([]);
         setIncoming([]);
@@ -131,16 +131,18 @@ export const FriendsScreen = () => {
         return;
       }
 
-      const otherIds = rows
-        .map(r => (r.user_id === uid ? r.friend_user_id : r.user_id))
-        .filter(Boolean);
+      const otherIds = Array.from(
+        new Set(rows.map(r => (r.user_id === uid ? r.friend_user_id : r.user_id)).filter(Boolean)),
+      );
 
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('id,display_name,email')
-        .in('id', otherIds.length ? otherIds : ['00000000-0000-0000-0000-000000000000']);
-      if (error) throw error;
-      const map = new Map((profiles ?? []).map(p => [p.id, p]));
+      const map = new Map<string, { id: string; display_name: string | null; email: string | null }>();
+      if (otherIds.length) {
+        const snap = await getDocs(query(collection(db, 'profiles'), where(documentId(), 'in', otherIds.slice(0, 30))));
+        for (const d of snap.docs) {
+          const data = d.data();
+          map.set(d.id, { id: d.id, display_name: data.display_name ?? null, email: data.email ?? null });
+        }
+      }
 
       const accepted = rows.filter(r => r.status === 'accepted');
       const pendingIncoming = rows.filter(r => r.status === 'pending' && r.friend_user_id === uid);

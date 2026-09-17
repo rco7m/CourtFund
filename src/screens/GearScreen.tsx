@@ -4,10 +4,9 @@ import { Package, AlertTriangle, ClipboardList } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LogGearModal } from '../components/LogGearModal';
 import { AppHeader } from '../components/AppHeader';
-import { createGearItem, listMyGear } from '../data/gear';
+import { createGearItem, listMyGear, updateGearItem } from '../data/gear';
 import { createExpense } from '../data/expenses';
 import { createCostSplit } from '../data/splits';
-import { supabase } from '../lib/supabase';
 
 const C = {
   bg: '#0A0F1E', card: '#1E293B', accent: '#CCFF00', accentBg: '#0A0F1E',
@@ -130,10 +129,10 @@ export const GearScreen = () => {
             const newQty = (existing.quantity || 0) + qty;
             const newCost = (existing.cost || 0) + (Number.isFinite(amount) ? amount : 0);
             
-            await supabase.from('gear_items').update({
+            await updateGearItem(existing.id, {
                quantity: newQty,
                cost: newCost
-            }).eq('id', existing.id);
+            });
           } else {
             const created = await createGearItem({
               name: nameToSave,

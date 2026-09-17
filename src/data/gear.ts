@@ -1,4 +1,5 @@
-import { supabase } from '../lib/supabase';
+import { addDoc, collection, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 
 export type GearItemRow = {
   id: string;
@@ -15,27 +16,26 @@ export type GearItemRow = {
 };
 
 export async function listMyGear() {
-  const { data, error } = await supabase
-    .from('gear_items')
-    .select('id,user_id,name,category,brand,quantity,unit,purchase_date,cost,status,notes')
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as GearItemRow[];
+  const userId = auth.currentUser?.uid;
+  if (!userId) return [];
+
+  const q = query(collection(db, 'gear_items'), where('user_id', '==', userId), orderBy('created_at', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as GearItemRow[];
 }
 
 export async function createGearItem(input: Omit<GearItemRow, 'id' | 'user_id'>) {
-  const { data: userRes } = await supabase.auth.getUser();
-  const userId = userRes.user?.id;
+  const userId = auth.currentUser?.uid;
   if (!userId) throw new Error('Not signed in');
 
-  const { data, error } = await supabase
-    .from('gear_items')
-    .insert({
-      user_id: userId,
-      ...input,
-    })
-    .select('id,user_id,name,category,brand,quantity,unit,purchase_date,cost,status,notes')
-    .single();
-  if (error) throw error;
-  return data as GearItemRow;
+  const ref = await addDoc(collection(db, 'gear_items'), {
+    user_id: userId,
+    ...input,
+    created_at: new Date().toISOString(),
+  });
+  return { id: ref.id, user_id: userId, ...input } as GearItemRow;
+}
+
+export async function updateGearItem(id: string, update: Partial<Pick<GearItemRow, 'quantity' | 'cost'>>) {
+  await updateDoc(doc(db, 'gear_items', id), { ...update, updated_at: new Date().toISOString() });
 }

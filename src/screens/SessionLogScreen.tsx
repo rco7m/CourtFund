@@ -115,7 +115,7 @@ export const SessionLogScreen = () => {
             duration_minutes: durationMinutes,
             rating: data.rating || null,
             notes: data.level ? `Level: ${data.level}` : null,
-            insight: 'Session saved to Supabase.',
+            insight: 'Session saved.',
           });
           await recomputeMyStats();
           await load();

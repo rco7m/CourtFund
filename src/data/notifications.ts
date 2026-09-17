@@ -1,4 +1,5 @@
-import { supabase } from '../lib/supabase';
+import { collection, getDocs, limit as fsLimit, orderBy, query, where } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 
 export type AppNotification = {
   id: string;
@@ -19,28 +20,23 @@ const formatRelativeTime = (dateString: string) => {
   return diffMs >= 0 ? `in ${absDays}d` : `${absDays}d ago`;
 };
 
-export async function listMyNotifications(limit = 5) {
-  const { data: userRes } = await supabase.auth.getUser();
-  const userId = userRes.user?.id;
+export async function listMyNotifications(limitCount = 5) {
+  const userId = auth.currentUser?.uid;
   if (!userId) return [];
 
-  const [sessionsRes, expensesRes, scheduleRes, appNotifRes] = await Promise.all([
-    supabase.from('sessions').select('id,title,occurred_at').eq('user_id', userId).order('occurred_at', { ascending: false }).limit(limit),
-    supabase.from('expenses').select('id,type,amount,note,occurred_at').eq('user_id', userId).order('occurred_at', { ascending: false }).limit(limit),
-    supabase.from('schedule_events').select('id,title,start_time,tag').eq('user_id', userId).order('start_time', { ascending: false }).limit(limit),
-    supabase.from('app_notifications').select('id,kind,title,body,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),
+  const [sessionsSnap, expensesSnap, scheduleSnap, appNotifSnap] = await Promise.all([
+    getDocs(query(collection(db, 'sessions'), where('user_id', '==', userId), orderBy('occurred_at', 'desc'), fsLimit(limitCount))),
+    getDocs(query(collection(db, 'expenses'), where('user_id', '==', userId), orderBy('occurred_at', 'desc'), fsLimit(limitCount))),
+    getDocs(query(collection(db, 'schedule_events'), where('user_id', '==', userId), orderBy('start_time', 'desc'), fsLimit(limitCount))),
+    getDocs(query(collection(db, 'app_notifications'), where('user_id', '==', userId), orderBy('created_at', 'desc'), fsLimit(limitCount))),
   ]);
-
-  if (sessionsRes.error) throw sessionsRes.error;
-  if (expensesRes.error) throw expensesRes.error;
-  if (scheduleRes.error) throw scheduleRes.error;
-  if (appNotifRes.error) throw appNotifRes.error;
 
   const items: Array<AppNotification & { createdAt: string }> = [];
 
-  for (const s of sessionsRes.data ?? []) {
+  for (const doc of sessionsSnap.docs) {
+    const s = doc.data();
     items.push({
-      id: `session-${s.id}`,
+      id: `session-${doc.id}`,
       title: 'Session logged',
       desc: s.title,
       time: formatRelativeTime(s.occurred_at),
@@ -49,9 +45,10 @@ export async function listMyNotifications(limit = 5) {
     });
   }
 
-  for (const e of expensesRes.data ?? []) {
+  for (const doc of expensesSnap.docs) {
+    const e = doc.data();
     items.push({
-      id: `expense-${e.id}`,
+      id: `expense-${doc.id}`,
       title: 'Expense recorded',
       desc: `${e.note || e.type} • $${Number(e.amount).toFixed(2)}`,
       time: formatRelativeTime(e.occurred_at),
@@ -60,9 +57,10 @@ export async function listMyNotifications(limit = 5) {
     });
   }
 
-  for (const ev of scheduleRes.data ?? []) {
+  for (const doc of scheduleSnap.docs) {
+    const ev = doc.data();
     items.push({
-      id: `schedule-${ev.id}`,
+      id: `schedule-${doc.id}`,
       title: 'Upcoming event',
       desc: ev.title,
       time: formatRelativeTime(ev.start_time),
@@ -71,9 +69,10 @@ export async function listMyNotifications(limit = 5) {
     });
   }
 
-  for (const notif of appNotifRes.data ?? []) {
+  for (const doc of appNotifSnap.docs) {
+    const notif = doc.data();
     items.push({
-      id: `app-${notif.id}`,
+      id: `app-${doc.id}`,
       title: notif.title,
       desc: notif.body,
       time: formatRelativeTime(notif.created_at),
@@ -84,6 +83,6 @@ export async function listMyNotifications(limit = 5) {
 
   return items
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, limit)
-    .map(({ createdAt, ...item }) => item);
+    .slice(0, limitCount)
+    .map(({ createdAt: _createdAt, ...item }) => item);
 }

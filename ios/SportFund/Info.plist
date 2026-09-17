@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>SportFund</string>
+	<string>SportsFund</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>SportFund</string>
+	<string>SportsFund</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -34,9 +34,9 @@
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>SportFund uses your location to find nearby sports venues and booking options.</string>
+	<string>SportsFund uses your location to find nearby sports venues and booking options.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>SportFund uses your location to find nearby sports venues and booking options.</string>
+	<string>SportsFund uses your location to find nearby sports venues and booking options.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

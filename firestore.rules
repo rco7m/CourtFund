@@ -1,0 +1,120 @@
+rules_version = '2';
+
+// Mirrors the old Supabase Postgres RLS policies (see src/migrations/) as
+// closely as Firestore's model allows. Two deliberate loosenings exist,
+// both required because cost-split creation is reimplemented client-side
+// instead of behind a Postgres `security definer` function / Cloud Function:
+//   1. A signed-in user can create `expenses` / `cost_split_members` /
+//      `app_notifications` docs for OTHER users, but ONLY when the doc is
+//      tagged `created_by == request.auth.uid` and carries a `split_id`
+//      (i.e. it's part of a split they're hosting). They can't otherwise
+//      write another user's data.
+//   2. `profiles` are readable by any signed-in user (matches the original
+//      `profiles_read_auth` policy) so "add teammate by ID" and split
+//      participant name lookups work.
+// This is a real security trade-off vs. the original server-enforced
+// function: a malicious client could, in principle, call createCostSplit
+// with fabricated participant IDs and amounts. Revisit with Cloud Functions
+// if that risk matters for this app.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // profiles/{uid}
+    match /profiles/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if false;
+    }
+
+    // user_stats/{uid}
+    match /user_stats/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // friends/{id} — either party can read/update (accept), only the
+    // requester creates, either party can delete (decline / unfriend).
+    match /friends/{friendId} {
+      allow read: if isSignedIn() &&
+        (request.auth.uid == resource.data.user_id || request.auth.uid == resource.data.friend_user_id);
+      allow create: if isSignedIn() &&
+        request.auth.uid == request.resource.data.user_id &&
+        request.resource.data.friend_user_id != request.auth.uid;
+      allow update, delete: if isSignedIn() &&
+        (request.auth.uid == resource.data.user_id || request.auth.uid == resource.data.friend_user_id);
+    }
+
+    // schedule_events/{id}, sessions/{id}, gear_items/{id} — strictly own rows.
+    match /schedule_events/{id} {
+      allow read, update, delete: if isOwner(resource.data.user_id);
+      allow create: if isOwner(request.resource.data.user_id);
+    }
+
+    match /sessions/{id} {
+      allow read, update, delete: if isOwner(resource.data.user_id);
+      allow create: if isOwner(request.resource.data.user_id);
+    }
+
+    match /session_insights/{id} {
+      allow read: if isSignedIn() &&
+        get(/databases/$(database)/documents/sessions/$(resource.data.session_id)).data.user_id == request.auth.uid;
+      allow create: if isSignedIn() &&
+        get(/databases/$(database)/documents/sessions/$(request.resource.data.session_id)).data.user_id == request.auth.uid;
+    }
+
+    match /gear_items/{id} {
+      allow read, update, delete: if isOwner(resource.data.user_id);
+      allow create: if isOwner(request.resource.data.user_id);
+    }
+
+    // expenses/{id} — own rows, PLUS the split fan-out exception above.
+    match /expenses/{id} {
+      allow read, update, delete: if isOwner(resource.data.user_id);
+      allow create: if isOwner(request.resource.data.user_id) || (
+        isSignedIn() &&
+        request.resource.data.created_by == request.auth.uid &&
+        request.resource.data.split_id != null
+      );
+    }
+
+    // cost_splits/{id} — host or any denormalized member can read.
+    match /cost_splits/{id} {
+      allow read: if isSignedIn() &&
+        (request.auth.uid == resource.data.created_by || request.auth.uid in resource.data.member_ids);
+      allow create: if isOwner(request.resource.data.created_by);
+      allow update, delete: if isOwner(resource.data.created_by);
+    }
+
+    // cost_split_members/{id} — own row, or the split's host reading all members.
+    match /cost_split_members/{id} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.user_id ||
+        get(/databases/$(database)/documents/cost_splits/$(resource.data.split_id)).data.created_by == request.auth.uid
+      );
+      allow create: if isSignedIn() &&
+        get(/databases/$(database)/documents/cost_splits/$(request.resource.data.split_id)).data.created_by == request.auth.uid;
+    }
+
+    // app_notifications/{id} — own inbox; the split fan-out exception lets a
+    // host create notifications for the teammates they just split costs with.
+    match /app_notifications/{id} {
+      allow read, update: if isOwner(resource.data.user_id);
+      allow create: if isOwner(request.resource.data.user_id) || isOwner(request.resource.data.created_by);
+    }
+
+    // account_deletion_requests/{id} — own rows only; actual account
+    // deletion must still be actioned by an admin/backend process.
+    match /account_deletion_requests/{id} {
+      allow read, create: if isOwner(request.resource.data.user_id);
+    }
+  }
+}

@@ -76,3 +76,6 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Release signing (contains secrets, generated locally)
+android/keystore.properties

@@ -1,4 +1,16 @@
-import { supabase } from '../lib/supabase';
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  documentId,
+  getDoc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 
 export type FriendRow = {
   id: string;
@@ -23,105 +35,98 @@ export type FriendListItem = Omit<FriendRow, 'id'> & {
   initial: string;
 };
 
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+// Firebase Auth UIDs aren't UUIDs (typically a 28-char alphanumeric string),
+// so this just guards against obviously malformed input.
+function isValidUid(value: string) {
+  return /^[A-Za-z0-9]{16,64}$/.test(value);
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
 }
 
 export async function listMyFriends() {
-  const { data: userRes } = await supabase.auth.getUser();
-  const userId = userRes.user?.id;
+  const userId = auth.currentUser?.uid;
   if (!userId) return [];
 
-  const { data, error } = await supabase
-    .from('friends')
-    .select('id,user_id,friend_user_id,status,created_at')
-    .or(`user_id.eq.${userId},friend_user_id.eq.${userId}`)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as FriendRow[];
+  const [asUser, asFriend] = await Promise.all([
+    getDocs(query(collection(db, 'friends'), where('user_id', '==', userId))),
+    getDocs(query(collection(db, 'friends'), where('friend_user_id', '==', userId))),
+  ]);
+
+  const rows = [...asUser.docs, ...asFriend.docs].map(d => ({ id: d.id, ...d.data() })) as FriendRow[];
+  return rows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 
 export async function findProfileById(id: string) {
   const trimmed = id.trim();
-  if (!isUuid(trimmed)) throw new Error('Enter a valid teammate ID');
+  if (!isValidUid(trimmed)) throw new Error('Enter a valid teammate ID');
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id,display_name,email')
-    .eq('id', trimmed)
-    .maybeSingle();
+  const snap = await getDoc(doc(db, 'profiles', trimmed));
+  if (!snap.exists()) throw new Error('No user found with that ID');
 
-  if (error) {
-    // Common PostgREST error for "single row requested, but got 0 or >1".
-    if ((error as any)?.code === 'PGRST116') throw new Error('No user found with that ID');
-    throw error;
-  }
-
-  if (!data) throw new Error('No user found with that ID');
-  return data as FriendProfile;
+  const data = snap.data();
+  return { id: snap.id, display_name: data.display_name ?? null, email: data.email ?? null } as FriendProfile;
 }
 
 export async function sendFriendRequestById(friendId: string) {
-  const { data: userRes } = await supabase.auth.getUser();
-  const userId = userRes.user?.id;
+  const userId = auth.currentUser?.uid;
   if (!userId) throw new Error('Not signed in');
 
   const id = friendId.trim();
   if (!id) throw new Error('Enter a valid ID');
-  if (!isUuid(id)) throw new Error('Enter a valid teammate ID');
+  if (!isValidUid(id)) throw new Error('Enter a valid teammate ID');
   if (id === userId) throw new Error('You cannot add yourself');
 
-  // Validate the user exists (also normalizes PostgREST error to a friendly message)
   try {
     await findProfileById(id);
   } catch {
     throw new Error('No user found with that ID');
   }
 
-  const { error } = await supabase.from('friends').insert({
+  await addDoc(collection(db, 'friends'), {
     user_id: userId,
     friend_user_id: id,
     status: 'pending',
+    created_at: new Date().toISOString(),
   });
-  if (error) throw error;
 }
 
 export async function acceptFriendRequest(requestId: string) {
-  const { error } = await supabase.from('friends').update({ status: 'accepted' }).eq('id', requestId);
-  if (error) throw error;
+  await updateDoc(doc(db, 'friends', requestId), { status: 'accepted', updated_at: new Date().toISOString() });
 }
 
 export async function declineFriendRequest(requestId: string) {
-  const { error } = await supabase.from('friends').delete().eq('id', requestId);
-  if (error) throw error;
+  await deleteDoc(doc(db, 'friends', requestId));
 }
 
 export async function listMyFriendProfiles(opts?: { status?: Array<FriendRow['status']> }) {
   const rows = await listMyFriends();
-  const { data: userRes } = await supabase.auth.getUser();
-  const myId = userRes.user?.id;
+  const myId = auth.currentUser?.uid;
   if (!myId) return [];
 
   const allowed = new Set((opts?.status ?? ['accepted']) as FriendRow['status'][]);
   const filtered = rows.filter(r => allowed.has(r.status));
 
-  const otherIds = filtered
-    .map(r => (r.user_id === myId ? r.friend_user_id : r.user_id))
-    .filter(Boolean);
-
+  const otherIds = Array.from(
+    new Set(filtered.map(r => (r.user_id === myId ? r.friend_user_id : r.user_id)).filter(Boolean)),
+  );
   if (otherIds.length === 0) return [];
 
-  const { data: profiles, error } = await supabase
-    .from('profiles')
-    .select('id,display_name,email')
-    .in('id', otherIds);
-  if (error) throw error;
-
-  const map = new Map((profiles ?? []).map(p => [p.id, p]));
+  const profileMap = new Map<string, { display_name: string | null; email: string | null }>();
+  for (const idChunk of chunk(otherIds, 30)) {
+    const snap = await getDocs(query(collection(db, 'profiles'), where(documentId(), 'in', idChunk)));
+    for (const d of snap.docs) {
+      const data = d.data();
+      profileMap.set(d.id, { display_name: data.display_name ?? null, email: data.email ?? null });
+    }
+  }
 
   return filtered.map(row => {
     const otherId = row.user_id === myId ? row.friend_user_id : row.user_id;
-    const p = map.get(otherId);
+    const p = profileMap.get(otherId);
     const name = (p?.display_name || p?.email || 'Teammate') as string;
     return {
       friendship_id: row.id,

@@ -1,4 +1,5 @@
-import { supabase } from '../lib/supabase';
+import { addDoc, collection, getDocs, limit as fsLimit, orderBy, query, where } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 
 export type SessionRow = {
   id: string;
@@ -17,23 +18,20 @@ export type SessionInsightRow = {
 };
 
 export async function listMySessions() {
-  const { data: userRes } = await supabase.auth.getUser();
-  const userId = userRes.user?.id;
+  const userId = auth.currentUser?.uid;
   if (!userId) return [];
 
-  const { data, error } = await supabase
-    .from('sessions')
-    .select('id,user_id,title,occurred_at,duration_minutes,rating,notes')
-    .eq('user_id', userId)
-    .order('occurred_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as SessionRow[];
+  const q = query(collection(db, 'sessions'), where('user_id', '==', userId), orderBy('occurred_at', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as SessionRow[];
 }
 
 export async function getInsightForSession(sessionId: string) {
-  const { data, error } = await supabase.from('session_insights').select('id,session_id,insight').eq('session_id', sessionId).limit(1);
-  if (error) throw error;
-  return (data?.[0] ?? null) as SessionInsightRow | null;
+  const q = query(collection(db, 'session_insights'), where('session_id', '==', sessionId), fsLimit(1));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { id: d.id, ...d.data() } as SessionInsightRow;
 }
 
 export async function createSession(input: {
@@ -44,32 +42,26 @@ export async function createSession(input: {
   occurred_at?: string;
   insight?: string | null;
 }) {
-  const { data: userRes } = await supabase.auth.getUser();
-  const userId = userRes.user?.id;
+  const userId = auth.currentUser?.uid;
   if (!userId) throw new Error('Not signed in');
 
-  const { data: session, error } = await supabase
-    .from('sessions')
-    .insert({
-      user_id: userId,
-      title: input.title,
-      duration_minutes: input.duration_minutes,
-      rating: input.rating ?? null,
-      notes: input.notes ?? null,
-      occurred_at: input.occurred_at ?? new Date().toISOString(),
-    })
-    .select('id,user_id,title,occurred_at,duration_minutes,rating,notes')
-    .single();
-  if (error) throw error;
+  const payload = {
+    user_id: userId,
+    title: input.title,
+    duration_minutes: input.duration_minutes,
+    rating: input.rating ?? null,
+    notes: input.notes ?? null,
+    occurred_at: input.occurred_at ?? new Date().toISOString(),
+  };
+  const ref = await addDoc(collection(db, 'sessions'), payload);
+  const session = { id: ref.id, ...payload } as SessionRow;
 
   if (input.insight) {
-    const { error: insightError } = await supabase.from('session_insights').insert({
+    await addDoc(collection(db, 'session_insights'), {
       session_id: session.id,
       insight: input.insight,
     });
-    if (insightError) throw insightError;
   }
 
-  return session as SessionRow;
+  return session;
 }
-

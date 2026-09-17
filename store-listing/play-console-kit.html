@@ -1,0 +1,309 @@
+<title>SportsFund Launch Kit</title>
+<style>
+  :root {
+    --bg: #F7F8FA;
+    --surface: #FFFFFF;
+    --text: #12161F;
+    --text-muted: #5B6472;
+    --accent: #5E7A00;
+    --accent-soft: #EEF3D9;
+    --border: #E4E7EC;
+    --code-bg: #F1F2F5;
+    --good: #1B7A43;
+    --good-soft: #E6F4EC;
+    --warn: #93610A;
+    --warn-soft: #FBF0DC;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0A0F1E;
+      --surface: #121A2E;
+      --text: #E2E8F0;
+      --text-muted: #94A3B8;
+      --accent: #CCFF00;
+      --accent-soft: rgba(204,255,0,0.1);
+      --border: rgba(148,163,184,0.16);
+      --code-bg: #17223A;
+      --good: #4ADE80;
+      --good-soft: rgba(74,222,128,0.12);
+      --warn: #FBBF24;
+      --warn-soft: rgba(251,191,36,0.12);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0A0F1E;
+    --surface: #121A2E;
+    --text: #E2E8F0;
+    --text-muted: #94A3B8;
+    --accent: #CCFF00;
+    --accent-soft: rgba(204,255,0,0.1);
+    --border: rgba(148,163,184,0.16);
+    --code-bg: #17223A;
+    --good: #4ADE80;
+    --good-soft: rgba(74,222,128,0.12);
+    --warn: #FBBF24;
+    --warn-soft: rgba(251,191,36,0.12);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    padding-inline: 20px;
+  }
+  h1, h2 { font-family: 'Fraunces', Georgia, serif; text-wrap: balance; }
+  .wrap { max-width: 820px; margin: 0 auto; padding-block: 44px 90px; }
+
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+  .brand svg { width: 28px; height: 28px; }
+  .brand span { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 18px; }
+  .brand span b { color: var(--accent); font-weight: 700; }
+
+  header.top { border-bottom: 1px solid var(--border); padding-bottom: 26px; margin-bottom: 8px; }
+  header.top h1 { font-size: clamp(28px, 5vw, 38px); font-weight: 600; margin: 0 0 8px; }
+  header.top p { color: var(--text-muted); margin: 0; max-width: 60ch; }
+
+  section.block { padding-block: 28px; border-bottom: 1px solid var(--border); }
+  section.block:last-of-type { border-bottom: none; }
+  section.block h2 {
+    font-size: 20px; font-weight: 600; margin: 0 0 6px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  section.block .sub { color: var(--text-muted); font-size: 14.5px; margin: 0 0 16px; }
+
+  .field {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .field-head {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px;
+  }
+  .field-label {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--text-muted);
+  }
+  .field-count { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--text-muted); flex-shrink: 0; }
+  .field-body { white-space: pre-wrap; font-size: 15px; }
+  .copy-btn {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; border: 1px solid var(--border);
+    background: var(--code-bg); color: var(--text); border-radius: 7px; padding: 5px 10px;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .copy-btn:hover { border-color: var(--accent); }
+  .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 4px 10px; border-radius: 999px; }
+  .pill.good { background: var(--good-soft); color: var(--good); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.neutral { background: var(--code-bg); color: var(--text-muted); border: 1px solid var(--border); }
+
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; display: block; overflow-x: auto; }
+  table.data-table thead, table.data-table tbody { display: table; width: 100%; table-layout: fixed; }
+  table.data-table th, table.data-table td { text-align: left; padding: 9px 10px; border: 1px solid var(--border); vertical-align: top; }
+  table.data-table th { background: var(--code-bg); font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; color: var(--text-muted); }
+
+  .graphics-row { display: flex; gap: 20px; flex-wrap: wrap; }
+  .graphic-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; flex: 1 1 220px; }
+  .graphic-card img { width: 100%; border-radius: 8px; display: block; background: #0A0F1E; }
+  .graphic-card .cap { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--text-muted); margin-top: 8px; }
+
+  .checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .checklist li { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; }
+  .checklist .dot { width: 8px; height: 8px; border-radius: 999px; margin-top: 7px; flex-shrink: 0; }
+  .checklist .dot.done { background: var(--good); }
+  .checklist .dot.todo { background: var(--warn); }
+
+  .callout { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; font-size: 14px; color: var(--text-muted); margin-top: 14px; }
+  .callout b { color: var(--text); }
+  a { color: var(--accent); }
+  code { font-family: 'IBM Plex Mono', monospace; background: var(--code-bg); padding: 2px 6px; border-radius: 5px; font-size: 0.9em; }
+</style>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+<div class="wrap">
+  <div class="brand">
+    <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="none" stroke="var(--accent)" stroke-width="4"/><path d="M 20 50 A 30 14 0 0 0 80 50" fill="none" stroke="var(--accent)" stroke-width="3.5"/><path d="M 20 50 A 30 14 0 0 1 80 50" fill="none" stroke="var(--accent)" stroke-width="3.5"/><line x1="50" y1="20" x2="50" y2="80" stroke="var(--accent)" stroke-width="3.5"/></svg>
+    <span>Sports<b>Fund</b></span>
+  </div>
+
+  <header class="top">
+    <h1>Play Console launch kit</h1>
+    <p>Everything to fill out the SportsFund store listing — copy each field straight into Play Console. Package: <code>com.sportsfund.app</code></p>
+  </header>
+
+  <section class="block">
+    <h2>1. Category</h2>
+    <p class="sub">Play Console → Store presence → Main store listing → Categorization</p>
+    <div class="field">
+      <div class="field-head"><span class="field-label">App category</span><button class="copy-btn" data-copy="Sports">Copy</button></div>
+      <div class="field-body">Sports</div>
+    </div>
+    <div class="callout">Recommended because the core actions — finding courts, booking sessions, splitting fees — are sports-organizing tasks. <b>Health &amp; Fitness</b> is a reasonable alternative if you want to lean into the session-log/stats side instead.</div>
+  </section>
+
+  <section class="block">
+    <h2>2. Store listing text</h2>
+    <p class="sub">Store presence → Main store listing</p>
+
+    <div class="field">
+      <div class="field-head">
+        <span class="field-label">App name</span>
+        <button class="copy-btn" data-copy="SportsFund">Copy</button>
+      </div>
+      <div class="field-body">SportsFund</div>
+    </div>
+
+    <div class="field">
+      <div class="field-head">
+        <span class="field-label">Short description</span>
+        <span class="field-count">68 / 80</span>
+        <button class="copy-btn" data-copy="Find courts, book sessions, split costs, and track your sports gear.">Copy</button>
+      </div>
+      <div class="field-body">Find courts, book sessions, split costs, and track your sports gear.</div>
+    </div>
+
+    <div class="field">
+      <div class="field-head">
+        <span class="field-label">Full description</span>
+        <span class="field-count">1386 / 4000</span>
+        <button class="copy-btn" data-copy="full-desc">Copy</button>
+      </div>
+      <div class="field-body" id="full-desc">SportsFund helps you and your crew actually get on the court more often — find a place to play, lock in the session, split what it costs, and keep track of the gear and stats that come with it.
+
+FIND A PLACE TO PLAY
+Search for nearby courts and sports venues for football, cricket, tennis, badminton, basketball, volleyball, pickleball, table tennis, and more, using your current location.
+
+BOOK &amp; SCHEDULE SESSIONS
+Plan your next game and keep every upcoming session in one schedule, so you're never scrambling to remember who's playing when.
+
+SPLIT COSTS WITH YOUR FRIENDS
+Log court fees, gear purchases, and coaching costs, then split them with the people you played with. SportsFund tracks who owes what so you don't have to do the math — or the reminding.
+
+TRACK YOUR GEAR
+Keep a running list of the equipment you own, so you always know what's ready to go before game day.
+
+SESSION LOGS &amp; STATS
+Every session you log builds a simple history of how often you're playing, for how long, and with who — so your activity adds up to something you can actually see.
+
+ASK THE AI ASSISTANT
+Get quick answers about your sports activity, expenses, and gear from the built-in assistant, right inside the app.
+
+SportsFund is built for pickup groups, regular squads, and anyone who's ever had to chase five people for their share of the court fee. Find the game. Split the bill. Track the rest.</div>
+    </div>
+
+    <div class="field">
+      <div class="field-head"><span class="field-label">Privacy policy URL</span><button class="copy-btn" data-copy="https://claude.ai/artifact/R3De9xbiTYmBjgz81BDgZ6">Copy</button></div>
+      <div class="field-body"><a href="https://claude.ai/artifact/R3De9xbiTYmBjgz81BDgZ6" target="_blank" rel="noopener">https://claude.ai/artifact/R3De9xbiTYmBjgz81BDgZ6</a></div>
+      <div class="callout">This page is private by default. Before submitting, open it and use its <b>share</b> menu to make it publicly viewable — Play's review team needs to load it without signing in.</div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>3. Graphics</h2>
+    <p class="sub">Store presence → Main store listing → Graphics</p>
+    <div class="graphics-row">
+      <div class="graphic-card">
+        <img src="feature-graphic.png" alt="SportsFund feature graphic, 1024 by 500">
+        <div class="cap">feature-graphic.png · 1024×500 · ready to upload as-is</div>
+      </div>
+      <div class="graphic-card">
+        <img src="icon-512.png" alt="SportsFund app icon, 512 by 512" style="max-width:160px;">
+        <div class="cap">icon-512.png · 512×512 · hi-res store icon, ready to upload</div>
+      </div>
+    </div>
+    <div class="callout">Both files were generated from this repo (<code>store-listing/feature-graphic.png</code>, <code>store-listing/icon-512-play-store.png</code>) and already match the app's real in-app colors. The same source icon was also applied to the actual Android and iOS launcher icons — no more blank iOS app icon.</div>
+  </section>
+
+  <section class="block">
+    <h2>4. Icon prompt <span class="pill neutral">optional upgrade</span></h2>
+    <p class="sub">For a more polished icon than the geometric placeholder above — feed this to an AI image tool (Midjourney, Gemini, DALL·E) or a designer, then re-run the icon step below with the result.</p>
+    <div class="field">
+      <div class="field-head"><span class="field-label">Prompt</span><button class="copy-btn" data-copy="icon-prompt">Copy</button></div>
+      <div class="field-body" id="icon-prompt">A minimal, modern flat-vector app icon for "SportsFund", a sports court-booking and cost-splitting app. No text or lettering anywhere. Solid dark navy background (#0A0F1E). One bold sports ball drawn only in clean outline/line-art strokes, in neon lime-green (#CCFF00), with geometric curved seam lines like a basketball or volleyball. Optionally a small, subtle coin or dollar-sign accent overlapping the ball to hint at splitting costs, without cluttering the mark. Centered composition with generous padding — keep all artwork inside the middle 66% of the canvas so it survives a circular crop and Android's adaptive-icon mask. Square canvas, 1024x1024px, fully opaque (no transparency), no drop shadows, no busy gradients, no rounded-square background shape (the store applies its own mask). Style reference: confident flat sports-tech branding like Strava or Whoop, crossed with a dark fintech palette.</div>
+    </div>
+    <div class="callout">Technical constraints to keep whatever you generate: <b>512×512</b> for the Play Store hi-res icon (32-bit PNG, alpha OK) · Android adaptive icon safe zone is the center ~66% · iOS App Store icon must be <b>1024×1024 with zero transparency</b>.</div>
+  </section>
+
+  <section class="block">
+    <h2>5. Data safety</h2>
+    <p class="sub">App content → Data safety — answer the questionnaire using this as your working notes, not verbatim copy.</p>
+    <table class="data-table">
+      <thead><tr><th>Data type</th><th>Collected</th><th>Shared</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>Name, email address</td><td>Yes</td><td>No</td><td>Account management, app functionality</td></tr>
+        <tr><td>Approximate &amp; precise location</td><td>Yes, if granted</td><td>No</td><td>App functionality (find nearby venues)</td></tr>
+        <tr><td>Photos (profile picture)</td><td>Yes, optional</td><td>No</td><td>App functionality</td></tr>
+        <tr><td>App activity (bookings, gear, sessions, splits, friends)</td><td>Yes</td><td>No</td><td>App functionality</td></tr>
+        <tr><td>Financial info (purchases, payment methods)</td><td>No</td><td>No</td><td>— amounts are self-reported for splitting, no real payments processed in-app</td></tr>
+        <tr><td>Messages / contacts</td><td>No</td><td>No</td><td>—</td></tr>
+        <tr><td>Device or advertising IDs</td><td>No</td><td>No</td><td>— no ads or analytics SDKs in the app</td></tr>
+        <tr><td>Crash logs / diagnostics</td><td>No</td><td>No</td><td>— no crash-reporting SDK integrated yet</td></tr>
+      </tbody>
+    </table>
+    <div class="callout">Data is encrypted in transit (HTTPS/TLS via Supabase). Users can request deletion in-app via <b>Profile → Delete account</b>. Third parties in play: <b>Supabase</b> (auth/database), <b>Google Gemini API</b> (AI assistant replies), <b>OpenStreetMap Overpass</b> (venue search) — all as service providers, none for their own advertising. These determinations follow Play's data-safety definitions as best understood here; give the final answers one human review before submitting, since misdeclaring this form is itself a policy violation.</div>
+  </section>
+
+  <section class="block">
+    <h2>6. Content rating</h2>
+    <p class="sub">App content → Content rating — this is an interactive IARC questionnaire, so it can't be filled from here, but based on what's in the app:</p>
+    <ul style="margin:0;padding-left:20px;">
+      <li>No violence, sexual content, gambling, or user-generated public content (friends-only sharing)</li>
+      <li>Likely lands at <b>PEGI 3 / Everyone</b></li>
+      <li>Not primarily directed at children — answer the "target audience" step accordingly</li>
+    </ul>
+  </section>
+
+  <section class="block">
+    <h2>7. Before you submit</h2>
+    <ul class="checklist">
+      <li><span class="dot done"></span> Package renamed to <code>com.sportsfund.app</code>, display name set to SportsFund</li>
+      <li><span class="dot done"></span> Release keystore generated at <code>android/app/sportsfund-release.keystore</code>, wired into <code>build.gradle</code> via <code>android/keystore.properties</code> (gitignored)</li>
+      <li><span class="dot done"></span> versionCode 1 / versionName 1.0.0 set for first release</li>
+      <li><span class="dot done"></span> App icon applied to Android (all densities) and iOS (was previously empty — App Store would have rejected this)</li>
+      <li><span class="dot todo"></span> <b>Back up <code>android/keystore.properties</code> and the <code>.keystore</code> file somewhere safe (password manager / secure vault).</b> If this is lost before Google's Play App Signing takes over, you cannot publish updates to this app listing again.</li>
+      <li><span class="dot todo"></span> Confirm something on the backend actually processes rows in <code>account_deletion_requests</code> — Play requires deletion requests to be honored, not just recorded</li>
+      <li><span class="dot todo"></span> Make the privacy policy artifact public via its share menu before linking it in Play Console</li>
+      <li><span class="dot todo"></span> Run a real release build once local network/Gradle access is confirmed working, and smoke-test the signed APK/AAB</li>
+      <li><span class="dot todo"></span> Take 2–8 phone screenshots inside the app (Play requires at least 2) — not generated here, since they need to show real screens</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(function () {
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+  document.querySelectorAll('.copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var key = btn.getAttribute('data-copy');
+      var text = key;
+      var el = document.getElementById(key);
+      if (el) text = el.textContent;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).catch(function () { fallbackCopy(text); });
+        } else {
+          fallbackCopy(text);
+        }
+      } catch (e) { fallbackCopy(text); }
+      var original = btn.textContent;
+      btn.textContent = 'Copied';
+      btn.classList.add('copied');
+      setTimeout(function () { btn.textContent = original; btn.classList.remove('copied'); }, 1600);
+    });
+  });
+})();
+</script>

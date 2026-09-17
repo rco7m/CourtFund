@@ -9,11 +9,10 @@ import {
   ChevronDown, X, Check, LocateFixed, DollarSign,
 } from 'lucide-react-native';
 import { AppHeader } from '../components/AppHeader';
-import { createScheduleEvent } from '../data/schedule';
+import { createScheduleEvent, updateScheduleEventDetails } from '../data/schedule';
 import { createExpense } from '../data/expenses';
 import { minutesFromDurationLabel } from '../lib/datetime';
 import { listMyFriendProfiles, type FriendListItem } from '../data/friends';
-import { supabase } from '../lib/supabase';
 import MapView, { Marker, Region } from 'react-native-maps';
 import { checkLocationPermission, getCurrentLocation, requestLocationPermission } from '../services/locationService';
 import { searchNearbySportsPlaces } from '../services/overpassService';
@@ -341,7 +340,7 @@ const OrganizeModal = ({ visible, onClose }: any) => {
         details: `${v.address || 'Nearby venue'}${selectedFriends.length ? ` • Invited ${selectedFriends.length} friend(s)` : ''}`,
       });
 
-      await supabase.from('schedule_events').update({
+      await updateScheduleEventDetails(event.id, {
         sport,
         venue_name: v.name,
         venue_address: v.address || null,
@@ -350,7 +349,7 @@ const OrganizeModal = ({ visible, onClose }: any) => {
         booking_url: v.bookingUrl || v.website || null,
         player_count: selectedFriends.length + 1,
         invited_friend_ids: selectedFriendIds,
-      }).eq('id', event.id);
+      });
       await saveSelectedVenue({
         ...v,
         sport,

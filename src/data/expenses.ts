@@ -1,4 +1,5 @@
-import { supabase } from '../lib/supabase';
+import { addDoc, collection, getDocs, limit as fsLimit, orderBy, query, where } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 
 export type ExpenseRow = {
   id: string;
@@ -13,14 +14,18 @@ export type ExpenseRow = {
   created_by: string | null;
 };
 
-export async function listMyExpenses(limit = 50) {
-  const { data, error } = await supabase
-    .from('expenses')
-    .select('id,user_id,type,amount,currency,occurred_at,note,split_id,split_role,created_by')
-    .order('occurred_at', { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return (data ?? []) as ExpenseRow[];
+export async function listMyExpenses(limitCount = 50) {
+  const userId = auth.currentUser?.uid;
+  if (!userId) return [];
+
+  const q = query(
+    collection(db, 'expenses'),
+    where('user_id', '==', userId),
+    orderBy('occurred_at', 'desc'),
+    fsLimit(limitCount),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as ExpenseRow[];
 }
 
 export async function createExpense(input: {
@@ -30,18 +35,18 @@ export async function createExpense(input: {
   occurred_at?: string;
   note?: string | null;
 }) {
-  const { data: userRes } = await supabase.auth.getUser();
-  const userId = userRes.user?.id;
+  const userId = auth.currentUser?.uid;
   if (!userId) throw new Error('Not signed in');
 
-  const { error } = await supabase.from('expenses').insert({
+  await addDoc(collection(db, 'expenses'), {
     user_id: userId,
     type: input.type,
     amount: input.amount,
     currency: input.currency ?? 'USD',
     occurred_at: input.occurred_at ?? new Date().toISOString(),
     note: input.note ?? null,
+    split_id: null,
+    split_role: null,
     created_by: userId,
   });
-  if (error) throw error;
 }

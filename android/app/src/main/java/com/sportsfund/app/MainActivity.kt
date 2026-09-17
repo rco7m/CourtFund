@@ -1,4 +1,4 @@
-package com.sportfund
+package com.sportsfund.app
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

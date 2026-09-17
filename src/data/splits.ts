@@ -1,4 +1,5 @@
-import { supabase } from '../lib/supabase';
+import { collection, doc, getDoc, getDocs, orderBy, query, where, writeBatch } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 
 export type SplitParticipantInput = {
   id: string;
@@ -27,6 +28,15 @@ export type CostSplitActivity = {
   }>;
 };
 
+const round2 = (value: number) => Math.round(value * 100) / 100;
+
+// Client-side reimplementation of the old Postgres `create_cost_split`
+// function. Note this means the host's client directly writes expense,
+// cost_split_member, and notification documents for OTHER users' accounts —
+// Firestore security rules allow this specifically for split fan-out
+// (see firestore.rules), which is inherently less locked-down than the old
+// `security definer` Postgres function. Traded off deliberately for staying
+// on Cloud Functions-free / free-tier Firebase.
 export async function createCostSplit(input: {
   sourceType: 'gear' | 'expense';
   sourceRecordId: string | null;
@@ -35,61 +45,174 @@ export async function createCostSplit(input: {
   totalAmount: number;
   participants: SplitParticipantInput[];
 }) {
-  const participantIds = input.participants.map(participant => participant.id);
-  const participantNames = input.participants.map(participant => participant.name);
-  const { data, error } = await supabase.rpc('create_cost_split', {
-    p_source_type: input.sourceType,
-    p_source_record_id: input.sourceRecordId,
-    p_expense_type: input.expenseType,
-    p_title: input.title,
-    p_total_amount: input.totalAmount,
-    p_participant_ids: participantIds,
-    p_participant_names: participantNames,
+  const hostId = auth.currentUser?.uid;
+  if (!hostId) throw new Error('Not signed in');
+
+  const title = input.title?.trim();
+  if (!title) throw new Error('Split title is required');
+  if (!input.totalAmount || input.totalAmount <= 0) throw new Error('Split amount must be greater than zero');
+
+  const participantIds = Array.from(
+    new Set(input.participants.map(p => p.id).filter(id => id && id !== hostId)),
+  );
+  const participantCount = participantIds.length + 1;
+  if (participantCount < 2) throw new Error('Add at least one teammate before splitting');
+
+  const participantShare = round2(input.totalAmount / participantCount);
+  const hostShare = round2(input.totalAmount - participantShare * (participantCount - 1));
+
+  const hostProfileSnap = await getDoc(doc(db, 'profiles', hostId));
+  const hostProfile = hostProfileSnap.exists() ? hostProfileSnap.data() : null;
+  const hostName = hostProfile?.display_name || hostProfile?.email || 'You';
+
+  // Resolve participant display names: explicit name from input wins,
+  // otherwise fall back to their profile, otherwise 'Teammate'.
+  const providedNames = new Map(input.participants.map(p => [p.id, p.name?.trim()]));
+  const resolvedNames = new Map<string, string>();
+  for (const participantId of participantIds) {
+    const provided = providedNames.get(participantId);
+    if (provided) {
+      resolvedNames.set(participantId, provided);
+      continue;
+    }
+    const snap = await getDoc(doc(db, 'profiles', participantId));
+    const data = snap.exists() ? snap.data() : null;
+    resolvedNames.set(participantId, data?.display_name || data?.email || 'Teammate');
+  }
+
+  const now = new Date().toISOString();
+  const batch = writeBatch(db);
+
+  const splitRef = doc(collection(db, 'cost_splits'));
+  batch.set(splitRef, {
+    created_by: hostId,
+    source_type: input.sourceType,
+    source_record_id: input.sourceRecordId,
+    expense_type: input.expenseType,
+    title,
+    currency: 'USD',
+    total_amount: round2(input.totalAmount),
+    share_amount: participantShare,
+    participant_count: participantCount,
+    // Denormalized so Firestore security rules can check "am I a member of
+    // this split" without a query-based lookup (rules only support get()).
+    member_ids: [hostId, ...participantIds],
+    created_at: now,
+    updated_at: now,
   });
 
-  if (error) throw error;
-  return data as string;
+  const hostExpenseRef = doc(collection(db, 'expenses'));
+  batch.set(hostExpenseRef, {
+    user_id: hostId,
+    type: input.expenseType,
+    amount: hostShare,
+    currency: 'USD',
+    occurred_at: now,
+    note: `Split share • ${title}`,
+    split_id: splitRef.id,
+    split_role: 'host',
+    created_by: hostId,
+  });
+
+  batch.set(doc(collection(db, 'cost_split_members')), {
+    split_id: splitRef.id,
+    user_id: hostId,
+    participant_name: hostName,
+    amount: hostShare,
+    role: 'host',
+    status: 'posted',
+    expense_id: hostExpenseRef.id,
+    created_at: now,
+  });
+
+  for (const participantId of participantIds) {
+    const participantName = resolvedNames.get(participantId) ?? 'Teammate';
+
+    const memberExpenseRef = doc(collection(db, 'expenses'));
+    batch.set(memberExpenseRef, {
+      user_id: participantId,
+      type: input.expenseType,
+      amount: participantShare,
+      currency: 'USD',
+      occurred_at: now,
+      note: `Split share • ${title}`,
+      split_id: splitRef.id,
+      split_role: 'member',
+      created_by: hostId,
+    });
+
+    batch.set(doc(collection(db, 'cost_split_members')), {
+      split_id: splitRef.id,
+      user_id: participantId,
+      participant_name: participantName,
+      amount: participantShare,
+      role: 'member',
+      status: 'sent',
+      expense_id: memberExpenseRef.id,
+      created_at: now,
+    });
+
+    batch.set(doc(collection(db, 'app_notifications')), {
+      user_id: participantId,
+      created_by: hostId,
+      kind: 'cost_split',
+      title: 'New split added',
+      body: `${hostName} added ${title} to your expenses. Your share is $${participantShare.toFixed(2)}`,
+      metadata: { split_id: splitRef.id, title, amount: participantShare, source_type: input.sourceType },
+      created_at: now,
+    });
+  }
+
+  batch.set(doc(collection(db, 'app_notifications')), {
+    user_id: hostId,
+    created_by: hostId,
+    kind: 'cost_split_created',
+    title: 'Split created',
+    body: `You split ${title} with ${participantCount - 1} teammate(s).`,
+    metadata: { split_id: splitRef.id, title, amount: hostShare, source_type: input.sourceType },
+    created_at: now,
+  });
+
+  await batch.commit();
+  return splitRef.id;
 }
 
-export async function listMyCostSplitActivity(limit = 10) {
-  const { data: userRes } = await supabase.auth.getUser();
-  const userId = userRes.user?.id;
+export async function listMyCostSplitActivity(limitCount = 10) {
+  const userId = auth.currentUser?.uid;
   if (!userId) return [];
 
-  const [createdRes, memberRes] = await Promise.all([
-    supabase
-      .from('cost_splits')
-      .select('id,title,total_amount,share_amount,participant_count,source_type,created_at,created_by,cost_split_members(id,user_id,participant_name,amount,role,status)')
-      .eq('created_by', userId)
-      .order('created_at', { ascending: false })
-      .limit(limit),
-    supabase
-      .from('cost_split_members')
-      .select('split_id,participant_name,amount,role,status,cost_splits(id,title,total_amount,share_amount,participant_count,source_type,created_at,created_by)')
-      .eq('user_id', userId)
-      .eq('role', 'member')
-      .order('created_at', { ascending: false })
-      .limit(limit),
+  const [createdSnap, memberSnap] = await Promise.all([
+    getDocs(query(collection(db, 'cost_splits'), where('created_by', '==', userId), orderBy('created_at', 'desc'))),
+    getDocs(
+      query(
+        collection(db, 'cost_split_members'),
+        where('user_id', '==', userId),
+        where('role', '==', 'member'),
+        orderBy('created_at', 'desc'),
+      ),
+    ),
   ]);
-
-  if (createdRes.error) throw createdRes.error;
-  if (memberRes.error) throw memberRes.error;
 
   const map = new Map<string, CostSplitActivity>();
 
-  for (const split of createdRes.data ?? []) {
-    const members = ((split as any).cost_split_members ?? []).map((member: any) => ({
-      id: member.id,
-      user_id: member.user_id,
-      participant_name: member.participant_name,
-      amount: Number(member.amount || 0),
-      role: member.role,
-      status: member.status,
-    }));
+  for (const splitDoc of createdSnap.docs) {
+    const split = splitDoc.data();
+    const membersSnap = await getDocs(query(collection(db, 'cost_split_members'), where('split_id', '==', splitDoc.id)));
+    const members = membersSnap.docs.map(m => {
+      const data = m.data();
+      return {
+        id: m.id,
+        user_id: data.user_id,
+        participant_name: data.participant_name,
+        amount: Number(data.amount || 0),
+        role: data.role,
+        status: data.status,
+      };
+    });
+    const mine = members.find(m => m.role === 'host');
 
-    const mine = members.find((member: { role: string }) => member.role === 'host');
-    map.set(split.id, {
-      id: split.id,
+    map.set(splitDoc.id, {
+      id: splitDoc.id,
       title: split.title,
       total_amount: Number(split.total_amount || 0),
       share_amount: Number(split.share_amount || 0),
@@ -103,12 +226,16 @@ export async function listMyCostSplitActivity(limit = 10) {
     });
   }
 
-  for (const memberRow of memberRes.data ?? []) {
-    const split = (memberRow as any).cost_splits;
-    if (!split || map.has(split.id)) continue;
+  for (const memberDoc of memberSnap.docs) {
+    const memberRow = memberDoc.data();
+    if (map.has(memberRow.split_id)) continue;
 
-    map.set(split.id, {
-      id: split.id,
+    const splitSnap = await getDoc(doc(db, 'cost_splits', memberRow.split_id));
+    if (!splitSnap.exists()) continue;
+    const split = splitSnap.data();
+
+    map.set(memberRow.split_id, {
+      id: memberRow.split_id,
       title: split.title,
       total_amount: Number(split.total_amount || 0),
       share_amount: Number(split.share_amount || 0),
@@ -118,16 +245,18 @@ export async function listMyCostSplitActivity(limit = 10) {
       created_by: split.created_by,
       mine_amount: Number(memberRow.amount || 0),
       mine_role: 'member',
-      members: [{
-        participant_name: memberRow.participant_name,
-        amount: Number(memberRow.amount || 0),
-        role: memberRow.role,
-        status: memberRow.status,
-      }],
+      members: [
+        {
+          participant_name: memberRow.participant_name,
+          amount: Number(memberRow.amount || 0),
+          role: memberRow.role,
+          status: memberRow.status,
+        },
+      ],
     });
   }
 
   return Array.from(map.values())
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, limit);
+    .slice(0, limitCount);
 }

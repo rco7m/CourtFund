@@ -18,7 +18,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { Mail, ChevronLeft, SendHorizonal } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 import { SUPPORT_EMAIL } from '../constants/support';
 
 const { width, height } = Dimensions.get('window');
@@ -90,8 +91,7 @@ export const ForgotPasswordScreen = () => {
 
     try {
       setLoading(true);
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
-      if (error) throw error;
+      await sendPasswordResetEmail(auth, email.trim());
       setSent(true);
       Animated.spring(successScale, {
         toValue: 1,

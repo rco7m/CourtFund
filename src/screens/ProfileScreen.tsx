@@ -8,7 +8,8 @@ import { getMyProfile, recomputeMyStats } from '../data/profiles';
 import { getMyUserStats } from '../data/userStats';
 import { listMySessions } from '../data/sessions';
 import { listMyExpenses } from '../data/expenses';
-import { supabase } from '../lib/supabase';
+import { listMySchedule } from '../data/schedule';
+import { auth } from '../lib/firebase';
 import { trySetClipboardString } from '../lib/clipboard';
 import { requestAccountDeletion } from '../data/account';
 import { SUPPORT_EMAIL } from '../constants/support';
@@ -109,14 +110,13 @@ export const ProfileScreen = () => {
           recomputeMyStats().catch(error => {
             console.warn('Profile recomputeMyStats failed:', error);
           });
-          const { data: userRes } = await supabase.auth.getUser();
-          if (active) setMyId(userRes.user?.id ?? null);
+          if (active) setMyId(auth.currentUser?.uid ?? null);
           const results = await Promise.allSettled([
             getMyProfile(),
             getMyUserStats(),
             listMySessions(),
             listMyExpenses(50),
-            supabase.from('schedule_events').select('id,title,start_time,tag').order('start_time', { ascending: false }),
+            listMySchedule(),
           ]);
           if (!active) return;
 
@@ -125,7 +125,7 @@ export const ProfileScreen = () => {
           const sessionRows = sessionsResult.status === 'fulfilled' ? sessionsResult.value : [];
           const statsRow = statsResult.status === 'fulfilled' ? statsResult.value : null;
           const expenseRows = expensesResult.status === 'fulfilled' ? expensesResult.value : [];
-          const scheduleRows = scheduleResult.status === 'fulfilled' ? scheduleResult.value : { data: [] };
+          const scheduleRows = scheduleResult.status === 'fulfilled' ? scheduleResult.value : [];
 
           const failureMessages = results
             .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
@@ -145,7 +145,7 @@ export const ProfileScreen = () => {
           });
           setSessions(sessionRows);
           setExpenses(expenseRows);
-          setSchedule((scheduleRows.data ?? []).slice(0, 5));
+          setSchedule((scheduleRows ?? []).slice(0, 5));
         } catch (error: any) {
           console.warn('ProfileScreen load failed:', error);
         } finally {

@@ -1,4 +1,5 @@
-import { supabase } from '../lib/supabase';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 
 export type UserStatsRow = {
   user_id: string;
@@ -10,16 +11,19 @@ export type UserStatsRow = {
 };
 
 export async function getMyUserStats() {
-  const { data: userRes } = await supabase.auth.getUser();
-  const userId = userRes.user?.id;
+  const userId = auth.currentUser?.uid;
   if (!userId) return null;
 
-  const { data, error } = await supabase
-    .from('user_stats')
-    .select('user_id,sessions_count,hours_total,avg_rating,streak_days,updated_at')
-    .eq('user_id', userId)
-    .maybeSingle();
+  const snap = await getDoc(doc(db, 'user_stats', userId));
+  if (!snap.exists()) return null;
 
-  if (error) throw error;
-  return (data ?? null) as UserStatsRow | null;
+  const data = snap.data();
+  return {
+    user_id: snap.id,
+    sessions_count: data.sessions_count ?? 0,
+    hours_total: data.hours_total ?? 0,
+    avg_rating: data.avg_rating ?? null,
+    streak_days: data.streak_days ?? 0,
+    updated_at: data.updated_at ?? new Date().toISOString(),
+  } as UserStatsRow;
 }

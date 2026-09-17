@@ -30,7 +30,7 @@ const SportTheme = {
 };
 
 export const RootNavigator = () => {
-  const { initializing, session } = useAuth();
+  const { initializing, user } = useAuth();
 
   if (initializing) {
     return null;
@@ -40,7 +40,7 @@ export const RootNavigator = () => {
     <NavigationContainer theme={SportTheme}>
       <Stack.Navigator
         screenOptions={{ headerShown: false }}
-        initialRouteName={session ? 'MainTabs' : 'Onboarding'}
+        initialRouteName={user ? 'MainTabs' : 'Onboarding'}
       >
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
