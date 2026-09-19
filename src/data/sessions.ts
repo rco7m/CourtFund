@@ -1,4 +1,4 @@
-import { addDoc, collection, getDocs, limit as fsLimit, orderBy, query, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, limit as fsLimit, query, where } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 export type SessionRow = {
@@ -21,9 +21,10 @@ export async function listMySessions() {
   const userId = auth.currentUser?.uid;
   if (!userId) return [];
 
-  const q = query(collection(db, 'sessions'), where('user_id', '==', userId), orderBy('occurred_at', 'desc'));
+  const q = query(collection(db, 'sessions'), where('user_id', '==', userId));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as SessionRow[];
+  const rows = snap.docs.map(d => ({ id: d.id, ...d.data() })) as SessionRow[];
+  return rows.sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime());
 }
 
 export async function getInsightForSession(sessionId: string) {

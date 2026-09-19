@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 export type GearItemRow = {
@@ -19,9 +19,11 @@ export async function listMyGear() {
   const userId = auth.currentUser?.uid;
   if (!userId) return [];
 
-  const q = query(collection(db, 'gear_items'), where('user_id', '==', userId), orderBy('created_at', 'desc'));
+  const q = query(collection(db, 'gear_items'), where('user_id', '==', userId));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as GearItemRow[];
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }) as GearItemRow & { created_at?: string })
+    .sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
 }
 
 export async function createGearItem(input: Omit<GearItemRow, 'id' | 'user_id'>) {

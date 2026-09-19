@@ -1,4 +1,4 @@
-import { addDoc, collection, getDocs, limit as fsLimit, orderBy, query, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 export type ExpenseRow = {
@@ -18,14 +18,12 @@ export async function listMyExpenses(limitCount = 50) {
   const userId = auth.currentUser?.uid;
   if (!userId) return [];
 
-  const q = query(
-    collection(db, 'expenses'),
-    where('user_id', '==', userId),
-    orderBy('occurred_at', 'desc'),
-    fsLimit(limitCount),
-  );
+  const q = query(collection(db, 'expenses'), where('user_id', '==', userId));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as ExpenseRow[];
+  const rows = snap.docs.map(d => ({ id: d.id, ...d.data() })) as ExpenseRow[];
+  return rows
+    .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())
+    .slice(0, limitCount);
 }
 
 export async function createExpense(input: {

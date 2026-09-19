@@ -1362,7 +1362,7 @@ PODS:
     - ReactNativeDependencies
     - Yoga
   - react-native-geolocation-service (5.3.1):
-    - React-Core
+    - React
   - react-native-maps (1.27.2):
     - react-native-maps/Maps (= 1.27.2)
   - react-native-maps/Generated (1.27.2):
@@ -2262,7 +2262,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   AsyncStorage: 37c04a199758ec16b9791c907a3ee00e99ea0b35
   FBLazyVector: baf9d0492aa305444465c798e972f87e6a60dc69
-  hermes-engine: f41433a96f6036c4b4bde3fc2c1b9f6c90da3ad2
+  hermes-engine: 8bf021ceba1d2e82d09e3d8be34aa69dab84315e
   RCTDeprecation: 7489702d717ceea80e271eeacb3fbca39fa3c056
   RCTRequired: 1cceac389e77dc5826c681cb782d864b0ed623fc
   RCTSwiftUI: afc0a0a635860da1040a0b894bfd529da06d7810
@@ -2299,7 +2299,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 8016ed7590fbedc903dc2d8351f0e9ccc851dd5e
   React-microtasksnativemodule: e019e567dad322e87b49044496b1ef86ac64c41b
   react-native-blur: 8ba46e551e04023fbe17ffa860917c1976453eed
-  react-native-geolocation-service: facc284885ec83ff6a215da1940ed6ff920e3282
+  react-native-geolocation-service: 32b2c2a3b91e70ce2a8d0c684801aaeb0a07e0ec
   react-native-maps: 423029f5dd91781b9345e21093e784bddfcdc360
   react-native-safe-area-context: 0d652bc91c2093b0da554b6e32f79f9a727da3a4
   React-NativeModulesApple: dafd6f380fdb290c5dce5cf55ea799db9f431bbc
@@ -2335,7 +2335,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: e96e93b493d8d86eeaee3e590ba0be53f6abe46f
   ReactCodegen: 2701033208d8c8055a75be97727fefcb56bf6d3d
   ReactCommon: 72fd7add948b85461e4af21da4451d0c6f1fea5d
-  ReactNativeDependencies: 33e20833edbe4b5a3e0326fe32f6d98352d7a3d5
+  ReactNativeDependencies: b401bc1f09d501485fcacbdbb94d79178a3ddc06
   RNBootSplash: 852af97f97d83a35d1c16e8bb5244dd7b86b1bd7
   RNCClipboard: 67baa8005e30d7037e5704b90f1462f04775a6da
   RNDateTimePicker: 52a5decb243f39119be9e0d62f137e9349f38bfb
@@ -2346,4 +2346,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: c38457e75108eee505620f3cd44578dd31065433
 
-COCOAPODS: 1.16.2
+COCOAPODS: 1.17.0

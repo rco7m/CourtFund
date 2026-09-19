@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 export type ScheduleEventRow = {
@@ -25,15 +25,12 @@ export async function listScheduleForRange(fromIso: string, toIso: string) {
   const userId = auth.currentUser?.uid;
   if (!userId) return [];
 
-  const q = query(
-    collection(db, 'schedule_events'),
-    where('user_id', '==', userId),
-    where('start_time', '>=', fromIso),
-    where('start_time', '<', toIso),
-    orderBy('start_time', 'asc'),
-  );
+  const q = query(collection(db, 'schedule_events'), where('user_id', '==', userId));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as ScheduleEventRow[];
+  const rows = snap.docs.map(d => ({ id: d.id, ...d.data() })) as ScheduleEventRow[];
+  return rows
+    .filter(r => r.start_time >= fromIso && r.start_time < toIso)
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 }
 
 // Used by ProfileScreen's activity feed: recent events regardless of date range.
@@ -41,9 +38,10 @@ export async function listMySchedule() {
   const userId = auth.currentUser?.uid;
   if (!userId) return [];
 
-  const q = query(collection(db, 'schedule_events'), where('user_id', '==', userId), orderBy('start_time', 'desc'));
+  const q = query(collection(db, 'schedule_events'), where('user_id', '==', userId));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as ScheduleEventRow[];
+  const rows = snap.docs.map(d => ({ id: d.id, ...d.data() })) as ScheduleEventRow[];
+  return rows.sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
 }
 
 export async function setScheduleStatus(eventId: string, status: ScheduleEventRow['status']) {

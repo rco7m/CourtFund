@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import BootSplash from 'react-native-bootsplash';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { SignupScreen } from '../screens/SignupScreen';
@@ -31,6 +32,12 @@ const SportTheme = {
 
 export const RootNavigator = () => {
   const { initializing, user } = useAuth();
+
+  useEffect(() => {
+    if (!initializing) {
+      BootSplash.hide({ fade: true });
+    }
+  }, [initializing]);
 
   if (initializing) {
     return null;

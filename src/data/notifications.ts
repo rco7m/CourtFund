@@ -1,4 +1,4 @@
-import { collection, getDocs, limit as fsLimit, orderBy, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 export type AppNotification = {
@@ -25,10 +25,10 @@ export async function listMyNotifications(limitCount = 5) {
   if (!userId) return [];
 
   const [sessionsSnap, expensesSnap, scheduleSnap, appNotifSnap] = await Promise.all([
-    getDocs(query(collection(db, 'sessions'), where('user_id', '==', userId), orderBy('occurred_at', 'desc'), fsLimit(limitCount))),
-    getDocs(query(collection(db, 'expenses'), where('user_id', '==', userId), orderBy('occurred_at', 'desc'), fsLimit(limitCount))),
-    getDocs(query(collection(db, 'schedule_events'), where('user_id', '==', userId), orderBy('start_time', 'desc'), fsLimit(limitCount))),
-    getDocs(query(collection(db, 'app_notifications'), where('user_id', '==', userId), orderBy('created_at', 'desc'), fsLimit(limitCount))),
+    getDocs(query(collection(db, 'sessions'), where('user_id', '==', userId))),
+    getDocs(query(collection(db, 'expenses'), where('user_id', '==', userId))),
+    getDocs(query(collection(db, 'schedule_events'), where('user_id', '==', userId))),
+    getDocs(query(collection(db, 'app_notifications'), where('user_id', '==', userId))),
   ]);
 
   const items: Array<AppNotification & { createdAt: string }> = [];

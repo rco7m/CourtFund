@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, orderBy, query, where, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, writeBatch } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 export type SplitParticipantInput = {
@@ -182,13 +182,12 @@ export async function listMyCostSplitActivity(limitCount = 10) {
   if (!userId) return [];
 
   const [createdSnap, memberSnap] = await Promise.all([
-    getDocs(query(collection(db, 'cost_splits'), where('created_by', '==', userId), orderBy('created_at', 'desc'))),
+    getDocs(query(collection(db, 'cost_splits'), where('created_by', '==', userId))),
     getDocs(
       query(
         collection(db, 'cost_split_members'),
         where('user_id', '==', userId),
         where('role', '==', 'member'),
-        orderBy('created_at', 'desc'),
       ),
     ),
   ]);
